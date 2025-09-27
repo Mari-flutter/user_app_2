@@ -1,7 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:user_app/Profile/kyc_verified.dart';
 
+import '../Models/Profile/set_up_profile.dart';
 import 'animation_screen.dart';
 
 class setup_profile extends StatefulWidget {
@@ -18,11 +23,11 @@ class _setup_profileState extends State<setup_profile> {
   Image? selected_Image;
   String? selectedValue;
   DateTime? _selectedDate;
-  TextEditingController Phonenumbercontroller = TextEditingController();
   final mobileController = TextEditingController();
   final otpController = TextEditingController();
   bool otpSent = false;
   bool otpVerified = false;
+  bool emailVerified = false;
 
   void sendOtp() {
     setState(() {
@@ -54,6 +59,80 @@ class _setup_profileState extends State<setup_profile> {
     }
   }
 
+  Future<void> loadProfile() async {
+    final response = await http.get(
+      Uri.parse("https://foxlchits.com/api/Profile/profile/$profileId"),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print(data);
+      setState(() {
+        nameController.text = data['name'] ?? '';
+        emailController.text = data['email'] ?? '';
+        mobileController.text = data['phoneNumber'] ?? '';
+        addressController.text = data['address'] ?? '';
+        _selectedDate =
+            data['dateofBirth'] != null && data['dateofBirth'].isNotEmpty
+            ? DateTime.parse(data['dateofBirth'])
+            : null;
+        selectedValue = data['gender'] ?? '';
+        otpVerified = data['phoneVerified'] ?? false;
+        otpSent = otpVerified;
+        emailVerified = data['emailVerified'] ?? false;
+      });
+    } else {
+      print("Failed to load profile data");
+    }
+  }
+
+  //put data
+  Future<void> updateProfile(SetupProfile profile) async {
+    final url = Uri.parse("https://foxlchits.com/api/Profile/$profileId");
+
+    final response = await http.put(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(profile.toJson()),
+    );
+
+    if (response.statusCode == 200) {
+      print("✅ Profile updated successfully");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Profile updated successfully")),
+      );
+    } else {
+      print("❌ Failed to update profile: ${response.statusCode}");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Failed to update profile")));
+    }
+  }
+
+  final storage = FlutterSecureStorage();
+  String? profileId; // to hold the stored id
+  String? loginType;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileId(); // call this first
+  }
+
+  Future<void> _loadProfileId() async {
+    profileId = await storage.read(key: 'profileId');
+    print('📦 Loaded profileId: $profileId');
+
+    if (profileId != null) {
+      await loadProfile(); // ✅ only now load the profile
+    }
+  }
+
+  late Future<SetupProfile> profileFuture;
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final phoneController = TextEditingController();
+  final addressController = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -83,7 +162,7 @@ class _setup_profileState extends State<setup_profile> {
                   fontType: FontType.urbanist,
                 ),
                 SizedBox(height: size.height * 0.015),
-                inputTextField('', TextEditingController(), (value) {
+                inputTextField('', nameController, (value) {
                   if (value == null || value.isEmpty) {
                     return "This field cannot be empty";
                   }
@@ -125,11 +204,11 @@ class _setup_profileState extends State<setup_profile> {
                   child: Column(
                     children: [
                       Row(children: [Expanded(child: mobileTextField())]),
-                      if (otpSent) ...[
+                      if (loginType != 'phone' && otpSent && !otpVerified) ...[
                         SizedBox(height: size.height * 0.02),
                         const SupportText(
                           text:
-                          'Enter the OTP sended to the Registered Mobile Number',
+                              'Enter the OTP sended to the Registered Mobile Number',
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: appclr.profile_clr2,
@@ -138,53 +217,46 @@ class _setup_profileState extends State<setup_profile> {
                         SizedBox(height: size.height * 0.015),
                         Row(children: [Expanded(child: otptextfield())]),
                       ],
-                      if (otpVerified) ...[
-                        SizedBox(height: size.height * 0.02),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment
-                              .start, // Align text to start (left)
-                          children: [
-                            const SupportText(
-                              text: 'Enter your Mail ID',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: appclr.profile_clr2,
-                              fontType: FontType.urbanist,
-                            ),
-                            SizedBox(height: size.height * 0.015),
-                            inputTextField('', TextEditingController(), (
-                                value,
-                                ) {
-                              if (value == null || value.isEmpty) {
-                                return "This field cannot be empty";
-                              }
-                              return null;
-                            }),
-                            SizedBox(height: size.height * 0.02),
-                            const SupportText(
-                              text: 'Address',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: appclr.profile_clr2,
-                              fontType: FontType.urbanist,
-                            ),
-                            SizedBox(height: size.height * 0.015),
-                            inputTextField('', TextEditingController(), (
-                                value,
-                                ) {
-                              if (value == null || value.isEmpty) {
-                                return "This field cannot be empty";
-                              }
-                              return null;
-                            }),
-                          ],
-                        ),
-                        SizedBox(height: size.height * 0.04),
-                        Align(
-                          alignment: Alignment.bottomRight,
-                          child: loginbutton(),
-                        ),
-                      ],
+                      SizedBox(height: size.height * 0.02),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SupportText(
+                            text: 'Enter your Mail ID',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: appclr.profile_clr2,
+                            fontType: FontType.urbanist,
+                          ),
+                          SizedBox(height: size.height * 0.015),
+                          inputTextField('', emailController, (value) {
+                            if (value == null || value.isEmpty) {
+                              return "This field cannot be empty";
+                            }
+                            return null;
+                          }),
+                          SizedBox(height: size.height * 0.02),
+                          const SupportText(
+                            text: 'Address',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: appclr.profile_clr2,
+                            fontType: FontType.urbanist,
+                          ),
+                          SizedBox(height: size.height * 0.015),
+                          inputTextField('', addressController, (value) {
+                            if (value == null || value.isEmpty) {
+                              return "This field cannot be empty";
+                            }
+                            return null;
+                          }),
+                        ],
+                      ),
+                      SizedBox(height: size.height * 0.04),
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: loginbutton(),
+                      ),
                     ],
                   ),
                 ),
@@ -197,18 +269,22 @@ class _setup_profileState extends State<setup_profile> {
   }
 
   inputTextField(
-      String hintText,
-      TextEditingController controller,
-      String? Function(String?) validator, {
-        Widget? suffixIcon,
-        bool obscureText = false,
-      }) {
-    Size size = MediaQuery.of(context).size;
+    String hintText,
+    TextEditingController controller,
+    String? Function(String?) validator, {
+    Widget? suffixIcon,
+    bool obscureText = false,
+  }) {
     return TextFormField(
       controller: controller,
       validator: validator,
       obscureText: obscureText,
       keyboardType: TextInputType.text,
+      style: GoogleFonts.urbanist(
+        color: Color(0xffADADAD), // your desired color
+        fontWeight: FontWeight.w500,
+        fontSize: 14,
+      ),
       decoration: InputDecoration(
         filled: true,
         fillColor: Colors.black,
@@ -470,6 +546,8 @@ class _setup_profileState extends State<setup_profile> {
           // Mobile Number Input
           Expanded(
             child: TextFormField(
+              controller: mobileController,
+              enabled: !otpVerified,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 border: InputBorder.none,
@@ -489,18 +567,18 @@ class _setup_profileState extends State<setup_profile> {
           ),
 
           // Send OTP Button
-          TextButton(
-            onPressed: () {
-              sendOtp();
-            },
-            child: const SupportText(
-              text: 'Send OTP',
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: appclr.blue,
-              fontType: FontType.urbanist,
+          if (loginType == 'phone') ...[
+            TextButton(
+              onPressed: (!otpSent && !otpVerified) ? sendOtp : null,
+              child: const SupportText(
+                text: 'Send OTP',
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: appclr.blue,
+                fontType: FontType.urbanist,
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -516,7 +594,7 @@ class _setup_profileState extends State<setup_profile> {
         children: [
           Expanded(
             child: TextFormField(
-              //: _mobileController,
+              controller: otpController,
               style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(
                 border: InputBorder.none,
@@ -551,25 +629,52 @@ class _setup_profileState extends State<setup_profile> {
     Size size = MediaQuery.of(context).size;
     return GestureDetector(
       onTap: () async {
-        // Simulate KYC completion animation
+        // ✅ Collect user-entered data
+        final setupProfile = SetupProfile(
+          id: profileId ?? '',
+          // static or fetched ID
+          userID: "",
+          // not needed right now
+          name: nameController.text.trim(),
+          email: emailController.text.trim(),
+          phoneNumber: mobileController.text.trim(),
+          address: addressController.text.trim(),
+          gender: selectedValue ?? "",
+          // 👈 from dropdown
+          dateOfBirth: _selectedDate != null
+              ? "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}"
+              : "",
+          // 👈 format DOB as yyyy-MM-dd
+          signupType: "",
+          phoneVerified: otpVerified,
+          emailVerified: emailVerified,
+          joinDate: "",
+          kycVerification: false,
+          referBy: "",
+        );
+
+        // ✅ Send to backend via PUT API
+        await updateProfile(setupProfile);
+
+        // ✅ Then navigate to KYC verified screen
         await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const kyc_verified()),
         );
 
-        // 🔹 Notify HomeLayout
+        // 🔹 Notify parent if callback provided
         if (widget.onKycCompleted != null) {
           widget.onKycCompleted!();
         }
 
-        // Optionally pop back to main layout
+        // Optionally pop back
         Navigator.pop(context);
       },
       child: Container(
         height: 38,
         width: 162,
         decoration: BoxDecoration(
-          color: Color(0xff2563EB).withOpacity(.9),
+          color: const Color(0xff2563EB).withOpacity(.9),
           borderRadius: BorderRadius.circular(15),
         ),
         child: const Center(

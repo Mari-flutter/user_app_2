@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:user_app/Investments/Gold/confirm_your_booking_screen.dart';
 
-class confirmation_receipts extends StatefulWidget {
-  const confirmation_receipts({super.key});
+class confirmation_receipt_for_sell_gold_now extends StatefulWidget {
+  const confirmation_receipt_for_sell_gold_now({super.key});
 
   @override
-  State<confirmation_receipts> createState() => _confirmation_receiptsState();
+  State<confirmation_receipt_for_sell_gold_now> createState() =>
+      _confirmation_receipt_for_sell_gold_nowState();
 }
 
-class _confirmation_receiptsState extends State<confirmation_receipts> {
+class _confirmation_receipt_for_sell_gold_nowState
+    extends State<confirmation_receipt_for_sell_gold_now> {
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -27,7 +28,9 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        Navigator.pop(context); // This will go back to the existing get_physical_gold
+                        Navigator.pop(
+                          context,
+                        ); // This will go back to the existing get_physical_gold
                       },
                       child: Image.asset(
                         'assets/images/My_Chits/back_arrow.png',
@@ -151,7 +154,7 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                       ),
                       child: Padding(
                         padding: EdgeInsets.symmetric(
-                          horizontal: size.width * 0.03,
+                          horizontal: size.width * 0.04,
                           vertical: size.height * 0.03,
                         ),
                         child: Column(
@@ -175,7 +178,7 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                     child: Padding(
                                       padding: EdgeInsets.symmetric(
                                         horizontal: size.width * 0.03,
-                                        vertical: size.height * 0.01,
+                                        vertical: size.height * 0.005,
                                       ),
                                       child: Row(
                                         children: [
@@ -188,9 +191,8 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                                 color: Color(0xff7A5225),
                                                 width: 1,
                                               ),
-                                              borderRadius: BorderRadius.circular(
-                                                30,
-                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(30),
                                             ),
                                             child: Center(
                                               child: Image.asset(
@@ -200,13 +202,16 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                               ),
                                             ),
                                           ),
-                                          SizedBox(width: size.width*0.04,),
+                                          SizedBox(width: size.width * 0.04),
                                           Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
-                                              SizedBox(height: size.height*0.005,),
+                                              SizedBox(
+                                                height: size.height * 0.005,
+                                              ),
                                               Text(
-                                                'Booking Confirmed',
+                                                'Gold Sale Completed',
                                                 style: GoogleFonts.urbanist(
                                                   textStyle: const TextStyle(
                                                     color: Color(0xffFFFFFF),
@@ -216,7 +221,7 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                                 ),
                                               ),
                                               Text(
-                                                'Your physical gold conversion has been scheduled successfully.',
+                                                'Your online gold has been sold successfully. The proceeds\nwill be transferred to your account soon.',
                                                 style: GoogleFonts.urbanist(
                                                   textStyle: const TextStyle(
                                                     color: Color(0xffCBA86F),
@@ -226,7 +231,7 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                                 ),
                                               ),
                                             ],
-                                          )
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -234,13 +239,13 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                 ),
                               ],
                             ),
-                            SizedBox(height: size.height*0.02,),
+                            SizedBox(height: size.height * 0.02),
                             Container(
                               width: double.infinity,
                               height: 180,
                               decoration: BoxDecoration(
                                 color: Color(0xff2E2E2E),
-                                borderRadius: BorderRadius.circular(11)
+                                borderRadius: BorderRadius.circular(11),
                               ),
                               child: Padding(
                                 padding: EdgeInsets.symmetric(
@@ -255,91 +260,51 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                       style: GoogleFonts.urbanist(
                                         textStyle: const TextStyle(
                                           color: Color(0xffFFFFFF),
-                                          fontSize:13,
+                                          fontSize: 13,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                     ),
-                                    SizedBox(height: size.height*0.015),
+                                    SizedBox(height: size.height * 0.015),
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
                                         Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              'Collection Store',
+                                              'Transfer Mode',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff6E6E6E),
-                                                  fontSize:9,
+                                                  fontSize: 9,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
                                             ),
                                             Text(
-                                              'Malabar- Bangalore',
+                                              'Online Credit',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
-                                                  fontSize:12,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                            SizedBox(height: size.height*0.01),
-                                            Text(
-                                              'Convertion Date',
-                                              style: GoogleFonts.urbanist(
-                                                textStyle: const TextStyle(
-                                                  color: Color(0xff6E6E6E),
-                                                  fontSize:9,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                            Text(
-                                              '11 November 2025',
-                                              style: GoogleFonts.urbanist(
-                                                textStyle: const TextStyle(
-                                                  color: Color(0xff989898),
-                                                  fontSize:12,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                            SizedBox(height: size.height*0.01),
-                                            Text(
-                                              'Collection Date',
-                                              style: GoogleFonts.urbanist(
-                                                textStyle: const TextStyle(
-                                                  color: Color(0xff6E6E6E),
-                                                  fontSize:9,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                            Text(
-                                              '3 days from the date of convertion.',
-                                              style: GoogleFonts.urbanist(
-                                                textStyle: const TextStyle(
-                                                  color: Color(0xff989898),
-                                                  fontSize:12,
+                                                  fontSize: 11,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
                                             ),
                                           ],
                                         ),
+                                        SizedBox(width: size.width * 0.38),
                                         Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               'Gold Details',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff6E6E6E),
-                                                  fontSize:9,
+                                                  fontSize: 9,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
@@ -349,18 +314,57 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
-                                                  fontSize:12,
+                                                  fontSize: 11,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
                                             ),
-                                            SizedBox(height: size.height*0.01),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+
+                                    SizedBox(height: size.height * 0.01),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Transaction Date:',
+                                              style: GoogleFonts.urbanist(
+                                                textStyle: const TextStyle(
+                                                  color: Color(0xff6E6E6E),
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                            Text(
+                                              '11 November 2025',
+                                              style: GoogleFonts.urbanist(
+                                                textStyle: const TextStyle(
+                                                  color: Color(0xff989898),
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
                                             Text(
                                               'Store Contact',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff6E6E6E),
-                                                  fontSize:9,
+                                                  fontSize: 9,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
@@ -370,165 +374,63 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
-                                                  fontSize:12,
+                                                  fontSize: 11,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
                                             ),
-                                            SizedBox(height: size.height*0.045),
                                           ],
-                                        )
+                                        ),
                                       ],
-                                    )
+                                    ),
+
+                                    SizedBox(height: size.height * 0.01),
+                                    Text(
+                                      'Credit Timeline:',
+                                      style: GoogleFonts.urbanist(
+                                        textStyle: const TextStyle(
+                                          color: Color(0xff6E6E6E),
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      'Within 3 working days from the date of sale',
+                                      style: GoogleFonts.urbanist(
+                                        textStyle: const TextStyle(
+                                          color: Color(0xff989898),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
-                            )
+                            ),
                           ],
                         ),
                       ),
                     ),
                   ),
                 ),
-                SizedBox(height: size.height*0.04),
-                Container(
-                  width: double.infinity,
-                  height: 174,
-                  decoration: BoxDecoration(
-                    color: Color(0xff1F1F1F),
-                    borderRadius: BorderRadius.circular(11),
-                    border: Border.all(color: Color(0xff81592B),width: 0.5)
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: size.width * 0.045,
-                      vertical: size.height * 0.02,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Important Instructions',
-                          style: GoogleFonts.urbanist(
-                            textStyle: const TextStyle(
-                              color: Color(0xffC5AE6D),
-                              fontSize:13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: size.height*0.02),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              width: 5,
-                              height: 5,
-                              decoration: BoxDecoration(
-                                color: Color(0xff61512B),
-                                borderRadius: BorderRadius.circular(5)
-                              ),
-                            ),
-                            Text(
-                              'Bring a valid government-issued photo ID for verification',
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xffA09984),
-                                  fontSize:12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: size.height*0.005),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              width: 5,
-                              height: 5,
-                              decoration: BoxDecoration(
-                                  color: Color(0xff61512B),
-                                  borderRadius: BorderRadius.circular(5)
-                              ),
-                            ),
-                            Text(
-                              'Show this booking confirmation at the store                       ',
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xffA09984),
-                                  fontSize:12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: size.height*0.005),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              width: 5,
-                              height: 5,
-                              decoration: BoxDecoration(
-                                  color: Color(0xff61512B),
-                                  borderRadius: BorderRadius.circular(5)
-                              ),
-                            ),
-                            Text(
-                              'The gold will be inspected and verified in your presence ',
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xffA09984),
-                                  fontSize:12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: size.height*0.005),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              width: 5,
-                              height: 5,
-                              decoration: BoxDecoration(
-                                  color: Color(0xff61512B),
-                                  borderRadius: BorderRadius.circular(5)
-                              ),
-                            ),
-                            Text(
-                              "You'll receive a purity certificate with your gold                 ",
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xffA09984),
-                                  fontSize:12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                      ],
-                    ),
-                  ),
-                ),
-                SizedBox(height: size.height*0.04),
+                SizedBox(height: size.height * 0.06),
                 Row(
                   children: [
-                    SizedBox(width: size.width*0.02,),
-                    Image.asset('assets/images/Investments/alert_2.png',width: 16,height: 16,),
-                    SizedBox(width: size.width*0.04,),
+                    SizedBox(width: size.width * 0.02),
+                    Image.asset(
+                      'assets/images/Investments/alert_2.png',
+                      width: 16,
+                      height: 16,
+                    ),
+                    SizedBox(width: size.width * 0.04),
                     Text(
                       'You can view the Confirmation Receipt in the Receipts Section in\nInvestment Menu',
                       style: GoogleFonts.urbanist(
                         textStyle: const TextStyle(
                           color: Color(0xff989898),
-                          fontSize:9,
+                          fontSize: 9,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -538,12 +440,12 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                 SizedBox(height: size.height * 0.03),
                 GestureDetector(
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => confirmation_receipts(),
-                      ),
-                    );
+                    // Navigator.push(
+                    //   context,
+                    //   MaterialPageRoute(
+                    //     builder: (context) => confirmation_receipts(),
+                    //   ),
+                    // );
                   },
                   child: Container(
                     width: double.infinity,

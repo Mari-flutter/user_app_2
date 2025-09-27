@@ -3,15 +3,17 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:user_app/Home_Page_User_Chits_Breakdown/history_screen.dart';
 import 'package:user_app/Investments/Gold/gold_investment_screen.dart';
 import 'package:user_app/My_Chits/my_chits.dart';
+import 'package:user_app/My_Investments/my_investments_screen.dart';
 import 'package:user_app/Notification/notification_screen.dart';
 import 'package:user_app/Live_Auction/pre_auction_timer_lobby.dart';
 import 'package:user_app/Chit_Groups/selected_chit_notifier.dart';
 
-class home extends StatefulWidget {
-  final Function(int) onTabChange; // Callback to switch tabs
-  final VoidCallback? onGoldTap;
+import '../Investments/toggle_screen_gold_realestate.dart';
 
-  const home({super.key, required this.onTabChange, this.onGoldTap});
+class home extends StatefulWidget {
+  final Function(int) onTabChange;
+
+  const home({super.key, required this.onTabChange});
 
   @override
   State<home> createState() => _homeState();
@@ -310,52 +312,62 @@ class _homeState extends State<home> {
                         ),
                       ),
                     ),
-                    Container(
-                      width: size.width * 0.28,
-                      height: size.height * 0.15,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(11),
-                        color: Color(0xff1A1A1A),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.only(left: size.width * 0.02),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(height: size.height * 0.017),
-                            Text(
-                              'Investments',
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xffBFBFBF),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => my_investments(initialTab: 0),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: size.width * 0.28,
+                        height: size.height * 0.15,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(11),
+                          color: Color(0xff1A1A1A),
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.only(left: size.width * 0.02),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(height: size.height * 0.017),
+                              Text(
+                                'Investments',
+                                style: GoogleFonts.urbanist(
+                                  textStyle: const TextStyle(
+                                    color: Color(0xffBFBFBF),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
-                            ),
-                            SizedBox(height: size.height * 0.01),
-                            Text(
-                              'Monitor earnings from\nall your investments.',
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xffBFBFBF),
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w500,
+                              SizedBox(height: size.height * 0.01),
+                              Text(
+                                'Monitor earnings from\nall your investments.',
+                                style: GoogleFonts.urbanist(
+                                  textStyle: const TextStyle(
+                                    color: Color(0xffBFBFBF),
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Padding(
-                              padding: EdgeInsets.only(
-                                left: size.width * 0.2,
-                                top: size.height * 0.045,
+                              Padding(
+                                padding: EdgeInsets.only(
+                                  left: size.width * 0.2,
+                                  top: size.height * 0.045,
+                                ),
+                                child: Image.asset(
+                                  'assets/images/Home/arrow forward.png',
+                                  width: 18,
+                                  height: 17,
+                                ),
                               ),
-                              child: Image.asset(
-                                'assets/images/Home/arrow forward.png',
-                                width: 18,
-                                height: 17,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -596,8 +608,15 @@ class _homeState extends State<home> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        widget.onGoldTap
-                            ?.call(); // <-- this calls navigateToGold() in HomeLayout
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => toggle_gold_realestate(
+                              initialIsGold: true,
+                              initialTab: 0,
+                            ),
+                          ),
+                        );
                       },
                       child: Container(
                         decoration: BoxDecoration(
@@ -655,53 +674,66 @@ class _homeState extends State<home> {
                       ),
                     ),
                     SizedBox(width: size.width * 0.06),
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(size.width * 0.03),
-                        gradient: const LinearGradient(
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                          colors: [Color(0xff666666), Color(0xff000000)],
-                        ),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(size.width * 0.003),
-                        child: Container(
-                          width: size.width * 0.3,
-                          height: size.height * 0.08,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              size.width * 0.03,
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => toggle_gold_realestate(
+                              initialIsGold: false,
+                              initialTab: 0,
                             ),
-                            color: const Color(0xff1A1A1A),
                           ),
-                          child: Padding(
-                            padding: EdgeInsets.only(left: size.width * 0.02),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SizedBox(height: size.height * 0.008),
-                                Text(
-                                  'Real Estate',
-                                  style: GoogleFonts.urbanist(
-                                    textStyle: TextStyle(
-                                      color: const Color(0xff626262),
-                                      fontSize: size.width * 0.03,
-                                      fontWeight: FontWeight.w600,
+                        );
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(size.width * 0.03),
+                          gradient: const LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [Color(0xff666666), Color(0xff000000)],
+                          ),
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(size.width * 0.003),
+                          child: Container(
+                            width: size.width * 0.3,
+                            height: size.height * 0.08,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(
+                                size.width * 0.03,
+                              ),
+                              color: const Color(0xff1A1A1A),
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.only(left: size.width * 0.02),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(height: size.height * 0.008),
+                                  Text(
+                                    'Real Estate',
+                                    style: GoogleFonts.urbanist(
+                                      textStyle: TextStyle(
+                                        color: const Color(0xff626262),
+                                        fontSize: size.width * 0.03,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                Padding(
-                                  padding: EdgeInsets.only(
-                                    left: size.width * 0.14,
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      left: size.width * 0.14,
+                                    ),
+                                    child: Image.asset(
+                                      'assets/images/Investments/real_estate.png',
+                                      width: size.width * 0.15,
+                                      height: size.height * 0.04,
+                                    ),
                                   ),
-                                  child: Image.asset(
-                                    'assets/images/Investments/real_estate.png',
-                                    width: size.width * 0.15,
-                                    height: size.height * 0.04,
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),

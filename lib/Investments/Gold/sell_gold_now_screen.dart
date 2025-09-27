@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:user_app/Investments/Gold/gold_investment_screen.dart';
+import 'package:user_app/Investments/Gold/confirmation_receipt_for_sell_gold_now.dart';
 import 'package:user_app/Investments/Gold/store_selection_screen.dart';
 
 import '../toggle_screen_gold_realestate.dart';
 
-class get_physical_gold extends StatefulWidget {
+class sell_gold_now extends StatefulWidget {
   final VoidCallback? onBackToGold;
 
-  const get_physical_gold({super.key, this.onBackToGold});
+  const sell_gold_now({super.key, this.onBackToGold});
 
   @override
-  State<get_physical_gold> createState() => _get_physical_goldState();
+  State<sell_gold_now> createState() => _sell_gold_nowState();
 }
 
-class _get_physical_goldState extends State<get_physical_gold> {
+class _sell_gold_nowState extends State<sell_gold_now> {
   @override
   Widget build(BuildContext context) {
     TextEditingController _controller = TextEditingController();
@@ -51,7 +51,7 @@ class _get_physical_goldState extends State<get_physical_gold> {
                     ),
                     SizedBox(width: size.width * 0.03),
                     Text(
-                      'Get Physical Gold',
+                      'Sell Gold',
                       style: GoogleFonts.urbanist(
                         textStyle: const TextStyle(
                           color: Color(0xffFFFFFF),
@@ -196,7 +196,7 @@ class _get_physical_goldState extends State<get_physical_gold> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Enter grams (₹)',
+                                  'Entered grams (₹)',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xffDBDBDB),
@@ -206,44 +206,30 @@ class _get_physical_goldState extends State<get_physical_gold> {
                                   ),
                                 ),
                                 SizedBox(height: size.height * 0.01),
-                                SizedBox(
+                                Container(
                                   width: size.width * 0.41,
                                   height: 38,
-                                  child: TextField(
-                                    style: TextStyle(
-                                      color: Color(0xffFFFFFF),
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    cursorColor: Color(0xffFFFFFF),
-                                    controller: _controller,
-                                    keyboardType: TextInputType.number,
-                                    decoration: InputDecoration(
-                                      filled: true,
-                                      // 👈 must enable to show background color
-                                      fillColor: Color(0xff2A2A2A),
-
-                                      // 👈 background color
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 10,
+                                  decoration: BoxDecoration(
+                                    color: Color(0xff525252),
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(width: size.width * 0.02),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          '8.5',
+                                          style: GoogleFonts.urbanist(
+                                            textStyle: const TextStyle(
+                                              color: Color(0xffDBDBDB),
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
-
-                                      // 👇 Focused border (when you tap on it)
-                                      focusedBorder: OutlineInputBorder(
-                                        borderSide: BorderSide(
-                                          color: Color(0xff2A2A2A),
                                         ),
-                                        borderRadius: BorderRadius.circular(5),
                                       ),
-                                      border: OutlineInputBorder(
-                                        borderSide: BorderSide(
-                                          color: Color(0xff2A2A2A),
-                                        ),
-                                        borderRadius: BorderRadius.circular(5),
-                                      ),
-                                    ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -298,7 +284,7 @@ class _get_physical_goldState extends State<get_physical_gold> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => store_selection(),
+                                builder: (context) => confirmation_receipt_for_sell_gold_now(),
                               ),
                             );
                           },
@@ -311,7 +297,7 @@ class _get_physical_goldState extends State<get_physical_gold> {
                             ),
                             child: Center(
                               child: Text(
-                                'Continue to Store Selection >',
+                                'Confirm to Sell',
                                 style: GoogleFonts.urbanist(
                                   textStyle: const TextStyle(
                                     color: Color(0xff141414),

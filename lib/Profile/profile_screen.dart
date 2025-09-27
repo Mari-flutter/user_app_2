@@ -1,6 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:user_app/Profile/kyc_verified.dart';
+import 'package:http/http.dart' as http;
+
+import '../Models/Profile/profile_model.dart';
+import '../Models/Profile/profile_update_model.dart' hide Profile;
 
 class profile extends StatefulWidget {
   const profile({super.key});
@@ -18,6 +25,9 @@ class _profileState extends State<profile> {
   TextEditingController Phonenumbercontroller = TextEditingController();
   final mobileController = TextEditingController();
 
+  final storage = FlutterSecureStorage();
+  String? profileId; // store the loaded ID
+
   Future<void> _pickDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -32,163 +42,281 @@ class _profileState extends State<profile> {
     }
   }
 
+  //get data
+  Future<Profile> getProfileData() async {
+    final response = await http.get(
+      Uri.parse("https://foxlchits.com/api/Profile/profile/$profileId"),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print(data);
+      return Profile.fromJson(data);
+    } else {
+      throw Exception('Failed to load profile');
+    }
+  }
+
+  //put data
+  Future<void> updateProfile(ProfileUpdate profile) async {
+    final url = Uri.parse("https://foxlchits.com/api/Profile/$profileId");
+
+    final response = await http.put(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(profile.toJson()),
+    );
+
+    if (response.statusCode == 200) {
+      print("✅ Profile updated successfully");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Profile updated successfully")),
+      );
+    } else {
+      print("❌ Failed to update profile: ${response.statusCode}");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Failed to update profile")));
+    }
+  }
+
+  late Future<Profile> profileFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileId();
+    profileFuture = getProfileData();
+  }
+
+  Future<void> _loadProfileId() async {
+    profileId = await storage.read(key: 'profileId');
+    print("📦 Loaded Profile ID: $profileId");
+  }
+
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final phoneController = TextEditingController();
+  final addressController = TextEditingController();
+  bool _isPrefilled = false;
+
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
     return Scaffold(
       backgroundColor: Color(0xff000000),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(height: size.height * 0.02),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    SupportText(
-                      text: 'Profile',
-                      fontSize: 22,
-                      fontWeight: FontWeight.w500,
-                      color: appclr.profile_clr1,
-                      fontType: FontType.urbanist,
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          // toggle edit mode
-                          isEdited = !isEdited;
-                        });
+      body: FutureBuilder(
+        future: profileFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (!snapshot.hasData) {
+            return const Center(child: Text('No profile data found'));
+          }
 
-                        // If you want to actually save, you can trigger form validation or API here
-                        if (!isEdited) {
-                          // Save logic here
-                          // e.g. print("Saved!");
-                        }
-                      },
-                      child: SupportText(
-                        text: isEdited ? 'Save' : 'Edit',
-                        fontSize: 16,
+          if (snapshot.hasData) {
+            final profile = snapshot.data!;
+            if (!_isPrefilled) {
+              nameController.text = profile.name;
+              emailController.text = profile.email;
+              phoneController.text = profile.phoneNumber;
+              addressController.text = profile.address;
+              selectedValue = profile.gender;
+              _isPrefilled = true; // avoid reassigning
+            }
+
+            if (_selectedDate == null && profile.dateOfBirth.isNotEmpty) {
+              try {
+                final parts = profile.dateOfBirth.split('-'); // MM-DD-YYYY
+                _selectedDate = DateTime(
+                  int.parse(parts[2]), // year
+                  int.parse(parts[0]), // month
+                  int.parse(parts[1]), // day
+                );
+              } catch (e) {
+                _selectedDate = null;
+                print("Failed to parse DOB: $e");
+              }
+            }
+
+            selectedValue ??= profile.gender;
+
+            return SafeArea(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(height: size.height * 0.02),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          SupportText(
+                            text: 'Profile',
+                            fontSize: 22,
+                            fontWeight: FontWeight.w500,
+                            color: appclr.profile_clr1,
+                            fontType: FontType.urbanist,
+                          ),
+                          GestureDetector(
+                            onTap: () async {
+                              if (isEdited) {
+                                // Currently in edit mode, now user clicked Save → trigger update
+                                final updatedProfile = ProfileUpdate(
+                                  name: nameController.text.isEmpty
+                                      ? profile.name
+                                      : nameController.text,
+                                  email: emailController.text.isEmpty
+                                      ? profile.email
+                                      : emailController.text,
+                                  address: addressController.text.isEmpty
+                                      ? profile.address
+                                      : addressController.text,
+                                  gender: selectedValue ?? profile.gender,
+                                  dateOfBirth: _selectedDate != null
+                                      ? "${_selectedDate!.month}-${_selectedDate!.day}-${_selectedDate!.year}"
+                                      : profile.dateOfBirth,
+                                );
+
+                                await updateProfile(updatedProfile);
+                              }
+
+                              setState(() {
+                                isEdited = !isEdited;
+                              });
+                            },
+
+                            child: SupportText(
+                              text: isEdited ? 'Save' : 'Edit',
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: isEdited
+                                  ? Color(0xff3A7AFF)
+                                  : appclr.profile_clr1,
+                              fontType: FontType.urbanist,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: size.height * 0.04),
+                      const SupportText(
+                        text: 'Name',
+                        fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: isEdited
-                            ? Color(0xff3A7AFF)
-                            : appclr.profile_clr1,
+                        color: appclr.profile_clr2,
                         fontType: FontType.urbanist,
                       ),
-                    ),
-                  ],
+                      SizedBox(height: size.height * 0.015),
+                      inputTextField('${profile.name}', nameController, (
+                        value,
+                      ) {
+                        if (value == null || value.isEmpty) {
+                          return "This field cannot be empty";
+                        }
+                        return null;
+                      }),
+                      SizedBox(height: size.height * 0.02),
+                      const SupportText(
+                        text: 'User Id / Referal Id',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: appclr.profile_clr2,
+                        fontType: FontType.urbanist,
+                      ),
+                      SizedBox(height: size.height * 0.015),
+                      inputTextField(
+                        '${profile.userID}',
+                        TextEditingController(),
+                        (value) {
+                          if (value == null || value.isEmpty) {
+                            return "This field cannot be empty";
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: size.height * 0.02),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          const SupportText(
+                            text: 'Date of Birth',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: appclr.profile_clr2,
+                            fontType: FontType.urbanist,
+                          ),
+                          SizedBox(width: size.width * 0.26),
+                          const SupportText(
+                            text: 'Gender',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: appclr.profile_clr2,
+                            fontType: FontType.urbanist,
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: size.height * 0.015),
+                      calendarandgender(profile.dateOfBirth, profile.gender),
+                      SizedBox(height: size.height * 0.02),
+                      const SupportText(
+                        text: 'Mobile Number',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: appclr.profile_clr2,
+                        fontType: FontType.urbanist,
+                      ),
+                      SizedBox(height: size.height * 0.015),
+                      Row(
+                        children: [
+                          Expanded(child: mobileTextField(profile.phoneNumber)),
+                        ],
+                      ),
+                      SizedBox(height: size.height * 0.02),
+                      SupportText(
+                        text: 'Mail ID',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: appclr.profile_clr2,
+                        fontType: FontType.urbanist,
+                      ),
+                      SizedBox(height: size.height * 0.015),
+                      inputTextField('${profile.email}', emailController, (
+                        value,
+                      ) {
+                        if (value == null || value.isEmpty) {
+                          return "This field cannot be empty";
+                        }
+                        return null;
+                      }),
+                      SizedBox(height: size.height * 0.02),
+                      const SupportText(
+                        text: 'Address',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: appclr.profile_clr2,
+                        fontType: FontType.urbanist,
+                      ),
+                      SizedBox(height: size.height * 0.015),
+                      inputTextField('${profile.address}', addressController, (
+                        value,
+                      ) {
+                        if (value == null || value.isEmpty) {
+                          return "This field cannot be empty";
+                        }
+                        return null;
+                      }),
+                    ],
+                  ),
                 ),
-                SizedBox(height: size.height * 0.04),
-                const SupportText(
-                  text: 'Name',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: appclr.profile_clr2,
-                  fontType: FontType.urbanist,
-                ),
-                SizedBox(height: size.height * 0.015),
-                inputTextField(
-                  'Dinesh Viswanathan V',
-                  TextEditingController(),
-                  (value) {
-                    if (value == null || value.isEmpty) {
-                      return "This field cannot be empty";
-                    }
-                    return null;
-                  },
-                ),
-                SizedBox(height: size.height * 0.02),
-                const SupportText(
-                  text: 'User Id / Referal Id',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: appclr.profile_clr2,
-                  fontType: FontType.urbanist,
-                ),
-                SizedBox(height: size.height * 0.015),
-                inputTextField('#FU025363', TextEditingController(), (value) {
-                  if (value == null || value.isEmpty) {
-                    return "This field cannot be empty";
-                  }
-                  return null;
-                }),
-                SizedBox(height: size.height * 0.02),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    const SupportText(
-                      text: 'Date of Birth',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: appclr.profile_clr2,
-                      fontType: FontType.urbanist,
-                    ),
-                    SizedBox(width: size.width * 0.26),
-                    const SupportText(
-                      text: 'Gender',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: appclr.profile_clr2,
-                      fontType: FontType.urbanist,
-                    ),
-                  ],
-                ),
-                SizedBox(height: size.height * 0.015),
-                calendarandgender(),
-                SizedBox(height: size.height * 0.02),
-                const SupportText(
-                  text: 'Mobile Number',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: appclr.profile_clr2,
-                  fontType: FontType.urbanist,
-                ),
-                SizedBox(height: size.height * 0.015),
-                Row(children: [Expanded(child: mobileTextField())]),
-                SizedBox(height: size.height * 0.02),
-                SupportText(
-                  text: 'Mail ID',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: appclr.profile_clr2,
-                  fontType: FontType.urbanist,
-                ),
-                SizedBox(height: size.height * 0.015),
-                inputTextField(
-                  'dineshbackenddev@gmail.com',
-                  TextEditingController(),
-                  (value) {
-                    if (value == null || value.isEmpty) {
-                      return "This field cannot be empty";
-                    }
-                    return null;
-                  },
-                ),
-                SizedBox(height: size.height * 0.02),
-                const SupportText(
-                  text: 'Address',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: appclr.profile_clr2,
-                  fontType: FontType.urbanist,
-                ),
-                SizedBox(height: size.height * 0.015),
-                inputTextField(
-                  '123 Main Street, Anytown, CA 12345, USA',
-                  TextEditingController(),
-                  (value) {
-                    if (value == null || value.isEmpty) {
-                      return "This field cannot be empty";
-                    }
-                    return null;
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
+              ),
+            );
+          } else {
+            return const Center(child: CircularProgressIndicator());
+          }
+        },
       ),
     );
   }
@@ -207,6 +335,11 @@ class _profileState extends State<profile> {
       validator: validator,
       obscureText: obscureText,
       keyboardType: TextInputType.text,
+      style: GoogleFonts.urbanist(
+        color: Color(0xffADADAD), // your desired color
+        fontWeight: FontWeight.w500,
+        fontSize: 14,
+      ),
       decoration: InputDecoration(
         contentPadding: EdgeInsets.symmetric(
           horizontal: size.width * 0.05,
@@ -250,7 +383,7 @@ class _profileState extends State<profile> {
     );
   }
 
-  calendarandgender() {
+  calendarandgender(String dob, String gender) {
     Size size = MediaQuery.of(context).size;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -272,7 +405,9 @@ class _profileState extends State<profile> {
                     Expanded(
                       child: SupportText(
                         text: _selectedDate == null
-                            ? 'Select Date'
+                            ? dob.isEmpty
+                                  ? 'Select Date'
+                                  : dob
                             : "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}",
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -313,7 +448,7 @@ class _profileState extends State<profile> {
                       children: [
                         Expanded(
                           child: SupportText(
-                            text: "Male",
+                            text: selectedValue ?? gender,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                             color: appclr.profile_clr1,
@@ -440,7 +575,7 @@ class _profileState extends State<profile> {
     );
   }
 
-  Widget mobileTextField() {
+  Widget mobileTextField(String phoneNumber) {
     Size size = MediaQuery.of(context).size;
     return Container(
       decoration: BoxDecoration(
@@ -456,7 +591,7 @@ class _profileState extends State<profile> {
             horizontal: size.width * 0.05,
             vertical: size.height * 0.017,
           ),
-          hintText: "+91 63855 64640",
+          hintText: phoneNumber.isEmpty ? "Enter phone number" : phoneNumber,
           hintStyle: GoogleFonts.urbanist(
             color: Color(0xffADADAD),
             fontSize: 14,

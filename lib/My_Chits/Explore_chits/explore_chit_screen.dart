@@ -3,6 +3,8 @@ import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:user_app/My_Chits/Explore_chits/auction_result_screen.dart';
 import 'package:user_app/My_Chits/Explore_chits/chit_scheme_screen.dart';
+import 'package:user_app/My_Chits/Explore_chits/terms_and_condition_screen.dart';
+import 'package:user_app/My_Chits/Explore_chits/withdraw_screen.dart';
 import 'package:user_app/My_Chits/my_chits.dart';
 import 'package:user_app/My_Chits/Explore_chits/receipts_screen.dart';
 import 'dart:async';
@@ -33,12 +35,14 @@ class _explore_chitState extends State<explore_chit> {
     'Auction Results',
     'Receipts',
     'T&C’s',
+    'Withdraw'
   ];
   final List<String> chit_scheme_to_TC_images = [
     'assets/images/My_Chits/chit_scheme.png',
     'assets/images/My_Chits/auction_result.png',
     'assets/images/My_Chits/receipts.png',
     'assets/images/My_Chits/T&c.png',
+    'assets/images/My_Chits/with_draw.png',
   ];
   late final List<Widget> chit_scheme_to_TC_pages = [
     chit_scheme(
@@ -49,6 +53,8 @@ class _explore_chitState extends State<explore_chit> {
     ),
     auction_result(),
     receipts(),
+    terms_condition(),
+    withdraw(),
   ];
   final bool isPay_due = true;
 
@@ -258,7 +264,7 @@ class _explore_chitState extends State<explore_chit> {
                         padding: EdgeInsets.only(
                           right: index == chit_scheme_to_TC_tags.length - 1
                               ? 0
-                              : size.width * 0.1,
+                              : size.width * 0.045,
                         ),
                         child: Column(
                           children: [

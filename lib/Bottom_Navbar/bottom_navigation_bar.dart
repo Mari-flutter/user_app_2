@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:user_app/Investments/investments_screen.dart';
 import 'package:user_app/Profile/profile_screen.dart';
 import 'package:user_app/Profile/setup_profile_screen.dart';
@@ -9,18 +13,23 @@ import '../Chit_Groups/chit_group_screen.dart';
 import '../Investments/Gold/gold_investment_screen.dart';
 
 class HomeLayout extends StatefulWidget {
-  const HomeLayout({super.key});
+  final int initialTab;
+  final bool? isKycCompleted;
+
+  const HomeLayout({super.key, this.initialTab = 0, this.isKycCompleted});
 
   @override
   State<HomeLayout> createState() => _HomeLayoutState();
 }
 
 class _HomeLayoutState extends State<HomeLayout> {
-  bool isKycCompleted = true; // Default false; update after verification
+  final storage = FlutterSecureStorage();
+  bool isKycCompleted = false;
+  String? profileId;
   int _selectedIndex = 0;
   int _goldTabIndex = 0; // 0 = Buy Gold, 1 = Sell Gold, 2 = Schemes
   bool _showGoldScreen = false; // true when Gold Investment screen is active
-  late final List<Widget> _screens;
+  List<Widget>? _screens;
 
   final List<String> icons = [
     'assets/images/Bottom_Navbar/home.png',
@@ -38,65 +47,83 @@ class _HomeLayoutState extends State<HomeLayout> {
     'Profile',
   ];
 
-  // In HomeLayout
-  void navigateToGold() {
-    setState(() {
-      _selectedIndex = 2; // Investments tab
-    });
-
-    // Pass initialTab = 0 to gold_investment screen
-    _screens[2] = investment(
-      onGoldTap: () {
-        setState(() {
-          _selectedIndex = 2; // Keep Investments tab selected
-        });
-      }, // optional if you want gold tab active in investments
-    );
-  }
 
   @override
   void initState() {
     super.initState();
 
-    // Initialize screens here, passing callback to home()
+    // If KYC is completed, set it
+    if (widget.isKycCompleted == true) {
+      isKycCompleted = true;
+    }
+
+    // Set the initial tab from the widget
+    _selectedIndex = widget.initialTab;
+
+    _loadProfileData();
+  }
+
+
+  Future<void> _loadProfileData() async {
+    final id = await storage.read(key: 'profileId');
+    setState(() => profileId = id);
+
+    if (id != null && id.isNotEmpty) {
+      try {
+        final response = await http.get(
+          Uri.parse("https://foxlchits.com/api/Profile/profile/$id"),
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final kyc = data['kycVerification'] ?? false;
+          setState(() => isKycCompleted = kyc);
+          print("✅ KYC Status: $kyc");
+        } else {
+          print("❌ Failed to load profile data: ${response.statusCode}");
+        }
+      } catch (e) {
+        print("⚠️ Error fetching profile: $e");
+      }
+    } else {
+      print("⚠️ No stored profileId found");
+    }
+
+    // after loading, setup your screens
+    _setupScreens();
+  }
+
+  /// 🔹 Initialize your tab screens after data is loaded
+  void _setupScreens() {
     _screens = [
       home(
-        onGoldTap: () {
+        onTabChange: (int index) {
           setState(() {
-            _selectedIndex = 2; // Investments tab
-            _showGoldScreen = true; // Show Gold screen
-            _goldTabIndex = 0; // default Buy Gold
+            _selectedIndex = index;
           });
         },
-        onTabChange: (index) {},
       ),
       chit_groups(),
-      investment(
-        onGoldTap: () {
-          setState(() {
-            _showGoldScreen = true;
-            _goldTabIndex = 0; // default Buy Gold
-          });
-        },
-      ),
+      investment(),
       transactions(initialTab: 0),
       isKycCompleted
           ? const profile()
           : setup_profile(
-        onKycCompleted: () {
-          setState(() {
-            isKycCompleted = true;
-            _screens[4] = const profile(); // replace with verified profile
-          });
-        },
-      ),
+              onKycCompleted: () {
+                setState(() {
+                  isKycCompleted = true;
+                  _screens![4] = const profile();
+                });
+              },
+            ),
     ];
+    setState(() {}); // refresh after setup
   }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
-      _showGoldScreen = false; // hide Gold Investment if navigating tabs
+      _showGoldScreen = false;
     });
   }
 
@@ -124,8 +151,9 @@ class _HomeLayoutState extends State<HomeLayout> {
                 },
               ),
             )
-          : _screens[_selectedIndex],
-
+          : (_screens == null
+                ? const Center(child: CircularProgressIndicator())
+                : _screens![_selectedIndex]),
       bottomNavigationBar: Container(
         width: double.infinity,
         decoration: BoxDecoration(color: Color(0xff000000)),

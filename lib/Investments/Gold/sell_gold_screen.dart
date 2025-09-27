@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:user_app/Investments/Gold/get_physical_gold_screen.dart';
+import 'package:user_app/Investments/Gold/sell_gold_now_screen.dart';
 
 import 'gold_investment_screen.dart';
 
@@ -171,7 +172,9 @@ class _sell_goldState extends State<sell_gold> {
                 ),
                 SizedBox(height: size.height * 0.04),
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context)=>sell_gold_now()));
+                  },
                   child: Container(
                     width: double.infinity,
                     height: 42,

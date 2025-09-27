@@ -39,6 +39,9 @@ dependencies:
   open_filex: ^4.7.0
   web_socket_channel: ^3.0.3
   intl: ^0.18.1
+  http:
+  flutter_secure_storage:
+
 
 dev_dependencies:
   flutter_test:
@@ -67,12 +70,14 @@ flutter:
     - assets/images/Chit_Groups/
     - assets/images/Home/
     - assets/images/Home_Page_User_Chits_Breakdown/
-    - assets/images//Investments/
+    - assets/images/Investments/
     - assets/images/Live_Auction/
     - assets/images/My_Chits/
+    - assets/images/My_Investments/
     - assets/images/Notification/
     - assets/images/Profile/
     - assets/images/Transactions/
+    - assets/images/Login/
 
 
   # To add assets to your application, add an assets section, like this:
