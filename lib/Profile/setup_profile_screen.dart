@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -19,6 +20,7 @@ class setup_profile extends StatefulWidget {
 }
 
 class _setup_profileState extends State<setup_profile> {
+  String? _fcmToken;
   bool isExpanded = false;
   Image? selected_Image;
   String? selectedValue;
@@ -28,6 +30,31 @@ class _setup_profileState extends State<setup_profile> {
   bool otpSent = false;
   bool otpVerified = false;
   bool emailVerified = false;
+  final storage = FlutterSecureStorage();
+  String? profileId; // to hold the stored id
+  String? loginType;
+
+  @override
+  void initState() {
+    super.initState();
+    _getToken();
+    _loadProfileId(); // call this first
+  }
+
+  Future<void> _getToken() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+    // Request permission (for iOS)
+    await messaging.requestPermission();
+
+    // Get the token
+    String? token = await messaging.getToken();
+    setState(() {
+      _fcmToken = token;
+    });
+
+    print("FCM Token: $_fcmToken");
+  }
 
   void sendOtp() {
     setState(() {
@@ -108,15 +135,38 @@ class _setup_profileState extends State<setup_profile> {
     }
   }
 
-  final storage = FlutterSecureStorage();
-  String? profileId; // to hold the stored id
-  String? loginType;
+  Future<void> saveFcmToken() async {
+    if (profileId == null || _fcmToken == null) {
+      print("⚠️ Cannot save FCM token — missing profileId or token");
+      return;
+    }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadProfileId(); // call this first
+    final url = Uri.parse("https://foxlchits.com/api/Notification/profile/save-token");
+
+    final body = {
+      "userId": profileId,
+      "fcmToken": _fcmToken,
+    };
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        print("✅ FCM token saved successfully for user $profileId");
+      } else {
+        print("❌ Failed to save FCM token: ${response.statusCode}");
+        print("Response: ${response.body}");
+      }
+    } catch (e) {
+      print("🚨 Error saving FCM token: $e");
+    }
   }
+
+
 
   Future<void> _loadProfileId() async {
     profileId = await storage.read(key: 'profileId');
@@ -629,22 +679,17 @@ class _setup_profileState extends State<setup_profile> {
     Size size = MediaQuery.of(context).size;
     return GestureDetector(
       onTap: () async {
-        // ✅ Collect user-entered data
-        final setupProfile = SetupProfile(
+        final setupProfileData = SetupProfile(
           id: profileId ?? '',
-          // static or fetched ID
-          userID: "",
-          // not needed right now
+          userID: "", // if needed
           name: nameController.text.trim(),
           email: emailController.text.trim(),
           phoneNumber: mobileController.text.trim(),
           address: addressController.text.trim(),
           gender: selectedValue ?? "",
-          // 👈 from dropdown
           dateOfBirth: _selectedDate != null
               ? "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}"
               : "",
-          // 👈 format DOB as yyyy-MM-dd
           signupType: "",
           phoneVerified: otpVerified,
           emailVerified: emailVerified,
@@ -653,23 +698,27 @@ class _setup_profileState extends State<setup_profile> {
           referBy: "",
         );
 
-        // ✅ Send to backend via PUT API
-        await updateProfile(setupProfile);
+        // 1️⃣ PUT API
+        await updateProfile(setupProfileData);
 
-        // ✅ Then navigate to KYC verified screen
+        // 2️⃣ POST FCM token
+        await saveFcmToken();
+
+        // 3️⃣ Navigate to KYC verified screen
         await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const kyc_verified()),
         );
 
-        // 🔹 Notify parent if callback provided
+        // 4️⃣ Notify parent
         if (widget.onKycCompleted != null) {
           widget.onKycCompleted!();
         }
 
-        // Optionally pop back
+        // Optional: pop back
         Navigator.pop(context);
       },
+
       child: Container(
         height: 38,
         width: 162,

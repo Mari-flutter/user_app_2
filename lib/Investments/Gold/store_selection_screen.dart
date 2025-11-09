@@ -54,7 +54,12 @@ class _store_selectionState extends State<store_selection> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        Navigator.pop(context); // This will go back to the existing get_physical_gold
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => get_physical_gold(),
+                          ),
+                        );
                       },
                       child: Image.asset(
                         'assets/images/My_Chits/back_arrow.png',

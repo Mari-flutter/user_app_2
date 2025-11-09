@@ -47,7 +47,7 @@ class _kyc_verifiedState extends State<kyc_verified> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => chit_groups()),
+                      MaterialPageRoute(builder: (context) => HomeLayout(initialTab: 1,)),
                     );
                   },
                   style: ElevatedButton.styleFrom(
@@ -61,7 +61,7 @@ class _kyc_verifiedState extends State<kyc_verified> {
                     ),
                   ),
                   child: const Text(
-                    "Explore Chits",
+                    "Go to Home",
                     style: TextStyle(
                       color: Color(0xffFFFFFF),
                       fontWeight: FontWeight.w600,

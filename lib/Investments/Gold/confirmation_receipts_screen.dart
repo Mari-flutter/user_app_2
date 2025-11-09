@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:user_app/Investments/Gold/confirm_your_booking_screen.dart';
 
+import '../../Receipt_Generate/physical_gold_receipt.dart';
+
 class confirmation_receipts extends StatefulWidget {
   const confirmation_receipts({super.key});
 
@@ -27,7 +29,12 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        Navigator.pop(context); // This will go back to the existing get_physical_gold
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => confirm_your_booking(),
+                          ),
+                        );
                       },
                       child: Image.asset(
                         'assets/images/My_Chits/back_arrow.png',
@@ -66,11 +73,11 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                       horizontal: size.width * 0.04,
                       vertical: size.height * 0.03,
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               'Foxl Chit Funds',
@@ -83,7 +90,7 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                               ),
                             ),
                             Text(
-                              'Official Confirmation Receipt',
+                              'Rajesh Kumar (#F02343)',
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffFFFFFF),
@@ -94,12 +101,11 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                             ),
                           ],
                         ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            SizedBox(height: size.height * .02),
                             Text(
-                              'Rajesh Kumar (#F02343)',
+                              'Official Confirmation Receipt',
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffFFFFFF),
@@ -108,7 +114,6 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                 ),
                               ),
                             ),
-                            SizedBox(height: size.height * .005),
                             Text(
                               'Booking ID: #GOLD4257',
                               style: GoogleFonts.urbanist(
@@ -127,7 +132,7 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                 ),
                 Container(
                   width: double.infinity,
-                  height: 310,
+                  height: 315,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [Color(0xff7D5628), Color(0xffD2B075)],
@@ -141,7 +146,7 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                     padding: EdgeInsets.all(1),
                     child: Container(
                       width: double.infinity,
-                      height: 310,
+                      height: 315,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.only(
                           bottomRight: Radius.circular(11),
@@ -188,9 +193,8 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                                 color: Color(0xff7A5225),
                                                 width: 1,
                                               ),
-                                              borderRadius: BorderRadius.circular(
-                                                30,
-                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(30),
                                             ),
                                             child: Center(
                                               child: Image.asset(
@@ -200,11 +204,14 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                               ),
                                             ),
                                           ),
-                                          SizedBox(width: size.width*0.04,),
+                                          SizedBox(width: size.width * 0.04),
                                           Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
-                                              SizedBox(height: size.height*0.005,),
+                                              SizedBox(
+                                                height: size.height * 0.005,
+                                              ),
                                               Text(
                                                 'Booking Confirmed',
                                                 style: GoogleFonts.urbanist(
@@ -226,7 +233,7 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                                 ),
                                               ),
                                             ],
-                                          )
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -234,13 +241,13 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                 ),
                               ],
                             ),
-                            SizedBox(height: size.height*0.02,),
+                            SizedBox(height: size.height * 0.02),
                             Container(
                               width: double.infinity,
                               height: 180,
                               decoration: BoxDecoration(
                                 color: Color(0xff2E2E2E),
-                                borderRadius: BorderRadius.circular(11)
+                                borderRadius: BorderRadius.circular(11),
                               ),
                               child: Padding(
                                 padding: EdgeInsets.symmetric(
@@ -255,24 +262,26 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                       style: GoogleFonts.urbanist(
                                         textStyle: const TextStyle(
                                           color: Color(0xffFFFFFF),
-                                          fontSize:13,
+                                          fontSize: 13,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                     ),
-                                    SizedBox(height: size.height*0.015),
+                                    SizedBox(height: size.height * 0.015),
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               'Collection Store',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff6E6E6E),
-                                                  fontSize:9,
+                                                  fontSize: 9,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
@@ -282,18 +291,20 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
-                                                  fontSize:12,
+                                                  fontSize: 12,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
                                             ),
-                                            SizedBox(height: size.height*0.01),
+                                            SizedBox(
+                                              height: size.height * 0.01,
+                                            ),
                                             Text(
                                               'Convertion Date',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff6E6E6E),
-                                                  fontSize:9,
+                                                  fontSize: 9,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
@@ -303,18 +314,20 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
-                                                  fontSize:12,
+                                                  fontSize: 12,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
                                             ),
-                                            SizedBox(height: size.height*0.01),
+                                            SizedBox(
+                                              height: size.height * 0.01,
+                                            ),
                                             Text(
                                               'Collection Date',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff6E6E6E),
-                                                  fontSize:9,
+                                                  fontSize: 9,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
@@ -324,7 +337,7 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
-                                                  fontSize:12,
+                                                  fontSize: 12,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
@@ -332,14 +345,15 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                           ],
                                         ),
                                         Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
                                           children: [
                                             Text(
                                               'Gold Details',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff6E6E6E),
-                                                  fontSize:9,
+                                                  fontSize: 9,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
@@ -349,18 +363,20 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
-                                                  fontSize:12,
+                                                  fontSize: 12,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
                                             ),
-                                            SizedBox(height: size.height*0.01),
+                                            SizedBox(
+                                              height: size.height * 0.01,
+                                            ),
                                             Text(
                                               'Store Contact',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff6E6E6E),
-                                                  fontSize:9,
+                                                  fontSize: 9,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
@@ -370,34 +386,36 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
-                                                  fontSize:12,
+                                                  fontSize: 12,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
                                             ),
-                                            SizedBox(height: size.height*0.045),
+                                            SizedBox(
+                                              height: size.height * 0.045,
+                                            ),
                                           ],
-                                        )
+                                        ),
                                       ],
-                                    )
+                                    ),
                                   ],
                                 ),
                               ),
-                            )
+                            ),
                           ],
                         ),
                       ),
                     ),
                   ),
                 ),
-                SizedBox(height: size.height*0.04),
+                SizedBox(height: size.height * 0.04),
                 Container(
                   width: double.infinity,
                   height: 174,
                   decoration: BoxDecoration(
                     color: Color(0xff1F1F1F),
                     borderRadius: BorderRadius.circular(11),
-                    border: Border.all(color: Color(0xff81592B),width: 0.5)
+                    border: Border.all(color: Color(0xff81592B), width: 0.5),
                   ),
                   child: Padding(
                     padding: EdgeInsets.symmetric(
@@ -412,12 +430,12 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                           style: GoogleFonts.urbanist(
                             textStyle: const TextStyle(
                               color: Color(0xffC5AE6D),
-                              fontSize:13,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
-                        SizedBox(height: size.height*0.02),
+                        SizedBox(height: size.height * 0.02),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -426,7 +444,7 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                               height: 5,
                               decoration: BoxDecoration(
                                 color: Color(0xff61512B),
-                                borderRadius: BorderRadius.circular(5)
+                                borderRadius: BorderRadius.circular(5),
                               ),
                             ),
                             Text(
@@ -434,14 +452,14 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffA09984),
-                                  fontSize:12,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        SizedBox(height: size.height*0.005),
+                        SizedBox(height: size.height * 0.005),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -449,8 +467,8 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                               width: 5,
                               height: 5,
                               decoration: BoxDecoration(
-                                  color: Color(0xff61512B),
-                                  borderRadius: BorderRadius.circular(5)
+                                color: Color(0xff61512B),
+                                borderRadius: BorderRadius.circular(5),
                               ),
                             ),
                             Text(
@@ -458,14 +476,14 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffA09984),
-                                  fontSize:12,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        SizedBox(height: size.height*0.005),
+                        SizedBox(height: size.height * 0.005),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -473,8 +491,8 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                               width: 5,
                               height: 5,
                               decoration: BoxDecoration(
-                                  color: Color(0xff61512B),
-                                  borderRadius: BorderRadius.circular(5)
+                                color: Color(0xff61512B),
+                                borderRadius: BorderRadius.circular(5),
                               ),
                             ),
                             Text(
@@ -482,14 +500,14 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffA09984),
-                                  fontSize:12,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        SizedBox(height: size.height*0.005),
+                        SizedBox(height: size.height * 0.005),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -497,8 +515,8 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                               width: 5,
                               height: 5,
                               decoration: BoxDecoration(
-                                  color: Color(0xff61512B),
-                                  borderRadius: BorderRadius.circular(5)
+                                color: Color(0xff61512B),
+                                borderRadius: BorderRadius.circular(5),
                               ),
                             ),
                             Text(
@@ -506,29 +524,33 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffA09984),
-                                  fontSize:12,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                           ],
-                        )
+                        ),
                       ],
                     ),
                   ),
                 ),
-                SizedBox(height: size.height*0.04),
+                SizedBox(height: size.height * 0.04),
                 Row(
                   children: [
-                    SizedBox(width: size.width*0.02,),
-                    Image.asset('assets/images/Investments/alert_2.png',width: 16,height: 16,),
-                    SizedBox(width: size.width*0.04,),
+                    SizedBox(width: size.width * 0.02),
+                    Image.asset(
+                      'assets/images/Investments/alert_2.png',
+                      width: 16,
+                      height: 16,
+                    ),
+                    SizedBox(width: size.width * 0.04),
                     Text(
                       'You can view the Confirmation Receipt in the Receipts Section in\nInvestment Menu',
                       style: GoogleFonts.urbanist(
                         textStyle: const TextStyle(
                           color: Color(0xff989898),
-                          fontSize:9,
+                          fontSize: 9,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -537,13 +559,20 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                 ),
                 SizedBox(height: size.height * 0.03),
                 GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => confirmation_receipts(),
-                      ),
-                    );
+                  onTap: () async {
+                    await PhysicalGoldReceiptPDF(context, {
+                      'bookingId': '#GOLD4257',
+                      'customerName': 'Thanish Prakash',
+                      'customerId': '#FOX65432',
+                      'contactNumber': '+91 98765 43210',
+                      'transactionDate': '11 November 2025',
+                      'collectionMethod': 'In-Store Pickup',
+                      'goldDetails': '10g',
+                      'bookingDate': '11 November 2025',
+                      'storeLocation': 'Malabar - Gandhipuram, Coimbatore',
+                      'storeContact': '+91 80 6789 5432',
+                      'validUntil': '11 December 2025',
+                    });
                   },
                   child: Container(
                     width: double.infinity,

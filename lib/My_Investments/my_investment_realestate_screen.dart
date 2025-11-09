@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hive/hive.dart';
 
 class my_investment_realestate extends StatefulWidget {
   final int totalMonths;
@@ -37,23 +38,13 @@ final List<Map<String, dynamic>> activeInvestments = [
   },
 ];
 
-final List<Map<String, dynamic>> completedInvestments = [
-  // {
-  //   'image': 'assets/images/My_Investments/land_sample_pic.jpg',
-  //   'planName': 'Completed Term Plan',
-  //   'startDate': 'Jan 2022',
-  //   'maturity': 'Jan 2024',
-  //   'invested': '₹1,00,000',
-  //   'roiEarned': '₹1,20,000',
-  //   'monthlyRoi': '₹1,000',
-  // },
-  // If empty → your “No completed investments” UI will show instead.
-];
-
 final chit_month = 20;
 final completed_chits = 6;
 
 class _my_investment_realestateState extends State<my_investment_realestate> {
+  List<Map<String, dynamic>> active = List.from(activeInvestments);
+  List<Map<String, dynamic>> history = [];
+
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -149,7 +140,7 @@ class _my_investment_realestateState extends State<my_investment_realestate> {
           'Active Investments',
           style: GoogleFonts.urbanist(
             color: Color(0xffAFC9FF),
-            fontSize: 13,
+            fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -163,6 +154,12 @@ class _my_investment_realestateState extends State<my_investment_realestate> {
               progress,
               item,
               isCompleted: false,
+              onCancelPlan: () {
+                setState(() {
+                  active.removeAt(index);
+                  history.add(item);
+                });
+              },
             );
           }),
         ),
@@ -171,12 +168,12 @@ class _my_investment_realestateState extends State<my_investment_realestate> {
           'Completed Investments',
           style: GoogleFonts.urbanist(
             color: Color(0xffAFC9FF),
-            fontSize: 13,
+            fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
         ),
         SizedBox(height: size.height * 0.03),
-        completedInvestments.isEmpty
+        history.isEmpty
             ? Column(
                 children: [
                   Center(
@@ -200,8 +197,8 @@ class _my_investment_realestateState extends State<my_investment_realestate> {
                 ],
               )
             : Column(
-                children: List.generate(completedInvestments.length, (index) {
-                  final item = completedInvestments[index];
+                children: List.generate(history.length, (index) {
+                  final item = history[index];
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -226,24 +223,57 @@ class _my_investment_realestateState extends State<my_investment_realestate> {
     double progress,
     Map<String, dynamic> item, {
     required bool isCompleted,
+    VoidCallback? onCancelPlan,
   }) {
     return Column(
       children: [
-        ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(11),
-            topRight: Radius.circular(11),
-          ),
-          child: Image.asset(
-            item['image'],
-            width: double.infinity,
-            height: 174,
-            fit: BoxFit.cover,
-          ),
-        ),
+        isCompleted
+            ? Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(11),
+                      topRight: Radius.circular(11),
+                    ),
+                    child: Image.asset(
+                      item['image'],
+                      width: double.infinity,
+                      height: 174,
+                      fit: BoxFit.cover,
+                      color: Colors.black.withOpacity(0.5),
+                      // dim the image
+                      colorBlendMode: BlendMode.darken,
+                    ),
+                  ),
+                  Positioned(
+                    top: size.height*0.1,
+                    left: size.width*0.3,
+                    child: Text(
+                      'Plan Canceled by User',
+                      style: GoogleFonts.urbanist(
+                        color: const Color(0xffFFFFFF),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(11),
+                  topRight: Radius.circular(11),
+                ),
+                child: Image.asset(
+                  item['image'],
+                  width: double.infinity,
+                  height: 174,
+                  fit: BoxFit.cover,
+                ),
+              ),
         Container(
           width: double.infinity,
-          height: 273,
+          height:isCompleted?240:292,
           margin: EdgeInsets.only(bottom: size.height * 0.02),
           decoration: BoxDecoration(
             color: const Color(0xff1D1D1D),
@@ -260,14 +290,6 @@ class _my_investment_realestateState extends State<my_investment_realestate> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item['planName'],
-                  style: GoogleFonts.urbanist(
-                    color: const Color(0xffFFFFFF),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
                 SizedBox(height: size.height * 0.005),
                 Text(
                   '${widget.totalMonths} months @ 10% ROI',
@@ -362,6 +384,138 @@ class _my_investment_realestateState extends State<my_investment_realestate> {
                     _infoColumn('ROI Earned', item['roiEarned']),
                     _infoColumn('Monthly ROI', item['monthlyRoi']),
                   ],
+                ),
+                SizedBox(height: size.height * .02),
+                if(!isCompleted)
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: GestureDetector(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            backgroundColor: const Color(0xffD9D9D9),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                            content: Container(
+                              height: 150,
+                              child: Column(
+                                children: [
+                                  Text(
+                                    'Confirmation',
+                                    style: GoogleFonts.urbanist(
+                                      fontSize: 16,
+                                      color: Color(0xff000000),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  SizedBox(height: size.height * 0.02),
+                                  Divider(height: 1, color: Color(0xffC0C0C0)),
+                                  SizedBox(height: size.height * 0.02),
+                                  Text(
+                                    'Are you sure you want to cancel the\nreal estate plan?',
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.urbanist(
+                                      color: Color(0xff434343),
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  SizedBox(height: size.height * 0.02),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      SizedBox(width: size.width * 0.05),
+                                      GestureDetector(
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                        },
+                                        child: Container(
+                                          width: 57,
+                                          height: 26,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              7,
+                                            ),
+                                            color: Color(0xff8B8B8B),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              'Cancel',
+                                              style: GoogleFonts.urbanist(
+                                                color: const Color(0xffFFFFFF),
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      GestureDetector(
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          if (onCancelPlan != null)
+                                            onCancelPlan();
+                                        },
+                                        child: Container(
+                                          width: 57,
+                                          height: 26,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              7,
+                                            ),
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                Color(0xff2C5DC2),
+                                                Color(0xff4C71BC),
+                                              ],
+                                            ),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              'Confirm',
+                                              style: GoogleFonts.urbanist(
+                                                color: const Color(0xffFFFFFF),
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: size.width * 0.05),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                    child: Container(
+                      width: 66,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(7),
+                        gradient: LinearGradient(
+                          colors: [Color(0xff2C5DC2), Color(0xff4C71BC)],
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'End Plan',
+                          style: GoogleFonts.urbanist(
+                            color: const Color(0xffFFFFFF),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

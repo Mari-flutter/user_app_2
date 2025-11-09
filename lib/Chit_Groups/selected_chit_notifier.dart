@@ -1,3 +1,3 @@
 class SelectedChitNotifier {
-  static int? selectedChitIndex;
+  static String? selectedChitId;
 }

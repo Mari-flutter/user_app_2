@@ -11,6 +11,8 @@ import 'package:user_app/Transactions/transactions_screen.dart';
 import '../Home/home_screen.dart';
 import '../Chit_Groups/chit_group_screen.dart';
 import '../Investments/Gold/gold_investment_screen.dart';
+import 'package:shimmer/shimmer.dart';
+
 
 class HomeLayout extends StatefulWidget {
   final int initialTab;
@@ -47,20 +49,19 @@ class _HomeLayoutState extends State<HomeLayout> {
     'Profile',
   ];
 
-
   @override
   void initState() {
     super.initState();
 
-    // If KYC is completed, set it
-    if (widget.isKycCompleted == true) {
-      isKycCompleted = true;
-    }
+    _screens = [
+      home(onTabChange: (i) => _onItemTapped(i)),
+      chit_groups(),
+      investment(),
+      transactions(initialTab: 0),
+      Container(), // placeholder for profile
+    ];
 
-    // Set the initial tab from the widget
-    _selectedIndex = widget.initialTab;
-
-    _loadProfileData();
+    _loadProfileData(); // then replace profile screen if needed
   }
 
 
@@ -89,11 +90,10 @@ class _HomeLayoutState extends State<HomeLayout> {
       print("⚠️ No stored profileId found");
     }
 
-    // after loading, setup your screens
+    // 🔹 Setup your screens after fetching profile data
     _setupScreens();
   }
 
-  /// 🔹 Initialize your tab screens after data is loaded
   void _setupScreens() {
     _screens = [
       home(
@@ -106,19 +106,23 @@ class _HomeLayoutState extends State<HomeLayout> {
       chit_groups(),
       investment(),
       transactions(initialTab: 0),
-      isKycCompleted
-          ? const profile()
-          : setup_profile(
-              onKycCompleted: () {
-                setState(() {
-                  isKycCompleted = true;
-                  _screens![4] = const profile();
-                });
-              },
-            ),
+      // ✅ Add KYC-based profile setup here
+      if (isKycCompleted)
+        const profile()
+      else
+        setup_profile(
+          onKycCompleted: () {
+            setState(() {
+              isKycCompleted = true;
+              _screens![4] = const profile();
+            });
+          },
+        ),
     ];
+
     setState(() {}); // refresh after setup
   }
+
 
   void _onItemTapped(int index) {
     setState(() {
@@ -138,9 +142,9 @@ class _HomeLayoutState extends State<HomeLayout> {
               onWillPop: () async {
                 setState(() {
                   _showGoldScreen = false;
-                  _selectedIndex = 2; // return to Investments tab
+                  _selectedIndex = 2;
                 });
-                return false; // prevent default pop
+                return false;
               },
               child: gold_investment(
                 initialTab: _goldTabIndex,
@@ -152,8 +156,9 @@ class _HomeLayoutState extends State<HomeLayout> {
               ),
             )
           : (_screens == null
-                ? const Center(child: CircularProgressIndicator())
-                : _screens![_selectedIndex]),
+                ? _buildShimmer(size)
+                : IndexedStack(index: _selectedIndex, children: _screens!)),
+
       bottomNavigationBar: Container(
         width: double.infinity,
         decoration: BoxDecoration(color: Color(0xff000000)),
@@ -206,4 +211,25 @@ class _HomeLayoutState extends State<HomeLayout> {
       ),
     );
   }
+  Widget _buildShimmer(Size size) {
+    return ListView.builder(
+        itemCount: 6,
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 15),
+            child: Shimmer.fromColors(
+              baseColor: Colors.grey.shade800,
+              highlightColor: Colors.grey.shade600,
+              child: Container(
+                height: size.height * 0.06,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade900,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+            ),
+          );
+         },
+       );
+    }
 }

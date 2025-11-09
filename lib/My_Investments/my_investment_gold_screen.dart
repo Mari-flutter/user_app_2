@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:user_app/Investments/Gold/get_physical_gold_screen.dart';
 import 'package:user_app/Investments/Gold/gold_investment_screen.dart';
-import 'package:user_app/Investments/toggle_screen_gold_realestate.dart';
-
-import '../Investments/Gold/sell_gold_screen.dart';
 
 class my_investment_gold extends StatefulWidget {
   final VoidCallback? onGoldSellTap;
@@ -441,7 +438,10 @@ class _my_investment_goldState extends State<my_investment_gold> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => toggle_gold_realestate(initialIsGold: true,initialTab: 1,)),
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                gold_investment(initialTab: 1),
+                          ),
                         );
                       },
                       child: Container(

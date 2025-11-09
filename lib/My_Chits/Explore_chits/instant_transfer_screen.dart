@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:user_app/My_Chits/Explore_chits/withdraw_screen.dart';
+import 'package:user_app/My_Chits/Explore_chits/withdraw_for_chits_screen.dart';
 
 class instant_transfer extends StatefulWidget {
   const instant_transfer({super.key});
@@ -29,7 +29,7 @@ class _instant_transferState extends State<instant_transfer> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => withdraw()),
+                          MaterialPageRoute(builder: (context) => withdraw_for_chits()),
                         );
                       },
                       child: Image.asset(

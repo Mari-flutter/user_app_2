@@ -3,8 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:user_app/Investments/Gold/gold_investment_screen.dart';
 import 'package:user_app/Investments/Gold/store_selection_screen.dart';
 
-import '../toggle_screen_gold_realestate.dart';
-
 class get_physical_gold extends StatefulWidget {
   final VoidCallback? onBackToGold;
 
@@ -15,9 +13,28 @@ class get_physical_gold extends StatefulWidget {
 }
 
 class _get_physical_goldState extends State<get_physical_gold> {
+  TextEditingController _controller = TextEditingController();
+  double approxAmount = 0.0;
+  final double goldRate = 10000; // 1 gram = ₹10,000
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(() {
+      double grams = double.tryParse(_controller.text) ?? 0;
+      setState(() {
+        approxAmount = grams * goldRate;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    TextEditingController _controller = TextEditingController();
     Size size = MediaQuery.of(context).size;
     return Scaffold(
       backgroundColor: Color(0xff000000),
@@ -36,10 +53,8 @@ class _get_physical_goldState extends State<get_physical_gold> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => toggle_gold_realestate(
-                              initialIsGold: true,
-                              initialTab: 1,
-                            ),
+                            builder: (context) =>
+                                gold_investment(initialTab: 0),
                           ),
                         );
                       },
@@ -99,7 +114,7 @@ class _get_physical_goldState extends State<get_physical_gold> {
                                   ),
                                 ),
                                 Text(
-                                  '₹6,250/g',
+                                  '${goldRate}/gram',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xffFFFFFF),
@@ -275,7 +290,7 @@ class _get_physical_goldState extends State<get_physical_gold> {
                                       Align(
                                         alignment: Alignment.centerLeft,
                                         child: Text(
-                                          '₹92,320',
+                                          '₹ ${approxAmount.toStringAsFixed(0)}',
                                           style: GoogleFonts.urbanist(
                                             textStyle: const TextStyle(
                                               color: Color(0xffDBDBDB),

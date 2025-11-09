@@ -1,8 +1,13 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:http/http.dart' as http;
 import 'package:user_app/Live_Auction/Attach_files/document_submitted.dart';
+import '../../Models/Live_Auction/my_document_model.dart';
+import '../../Services/secure_storage.dart';
 
 class attach_file extends StatefulWidget {
   const attach_file({super.key});
@@ -12,67 +17,191 @@ class attach_file extends StatefulWidget {
 }
 
 class _attach_fileState extends State<attach_file> {
-  String? _bankStatementPath;
-  String? _aadhaarPath;
+  bool _isLoading = true;
+  List<MyDocument> _documents = [];
 
-  // BANK FUNCTIONS
-  Future<void> _pickBankStatement() async {
+  @override
+  void initState() {
+    super.initState();
+    _fetchDocumentsFromServer();
+  }
+
+  /// ✅ Fetch documents list from server (GET)
+  Future<void> _fetchDocumentsFromServer() async {
+    try {
+      final profileId = await SecureStorageService.getProfileId();
+      if (profileId == null) {
+        print("⚠️ No profileId found in SecureStorage");
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final url = Uri.parse(
+          "https://foxlchits.com/api/Auctionwinner/my-documents/$profileId");
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(response.body);
+        setState(() {
+          _documents = data.map((e) => MyDocument.fromJson(e)).toList();
+          _isLoading = false;
+        });
+      } else {
+        print("❌ Failed to fetch documents: ${response.statusCode}");
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      print("⚠️ Error fetching documents: $e");
+      setState(() => _isLoading = false);
+    }
+  }
+
+  /// ✅ Upload document (POST)
+  Future<void> _uploadDocument({
+    required String filePath,
+    required String documentTypeId,
+  }) async {
+    final profileId = await SecureStorageService.getProfileId();
+    if (profileId == null || profileId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Profile ID not found")),
+      );
+      return;
+    }
+
+    final file = File(filePath);
+    if (!file.existsSync()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("File not found")),
+      );
+      return;
+    }
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      ),
+    );
+
+    try {
+      final url = Uri.parse("https://foxlchits.com/api/Auctionwinner/upload-document");
+      final request = http.MultipartRequest('POST', url);
+
+      // Required fields
+      request.fields['ProfileId'] = profileId;
+      request.fields['DocumentTypeId'] = documentTypeId;
+
+      // Attach file
+      request.files.add(await http.MultipartFile.fromPath('File', filePath));
+
+      // Optional headers (multipart handled automatically)
+      request.headers.addAll({
+        "Accept": "application/json",
+      });
+
+      print("📤 Uploading:");
+      print("➡️ ProfileId: $profileId");
+      print("➡️ DocumentTypeId: $documentTypeId");
+      print("➡️ File: ${file.path}");
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      print("📥 Server response (${response.statusCode}): $responseBody");
+
+      Navigator.pop(context); // close loader
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("✅ File uploaded successfully")),
+        );
+        await _fetchDocumentsFromServer(); // refresh data
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "❌ Upload failed (Code: ${response.statusCode})",
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      Navigator.pop(context); // close loader
+      print("⚠️ Upload error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Upload failed, please try again")),
+      );
+    }
+  }
+
+
+  /// 🧾 Pick a file and upload for a specific document type
+  Future<void> _pickFile(MyDocument doc) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'jpg', 'png', 'jpeg', 'doc', 'docx'],
     );
+
     if (result != null && result.files.single.path != null) {
-      setState(() {
-        _bankStatementPath = result.files.single.path!;
-      });
+      final filePath = result.files.single.path!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Uploading ${doc.documentType}...")),
+      );
+      await _uploadDocument(
+        filePath: filePath,
+        documentTypeId: doc.id,
+      );
     }
   }
 
-  Future<void> _viewBankStatement() async {
-    if (_bankStatementPath != null) await OpenFilex.open(_bankStatementPath!);
-  }
-
-  void _deleteBankStatement() {
-    setState(() {
-      _bankStatementPath = null;
-    });
-  }
-
-  // AADHAAR FUNCTIONS
-  Future<void> _pickAadhaar() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf', 'jpg', 'png', 'jpeg', 'doc', 'docx'],
-    );
-    if (result != null && result.files.single.path != null) {
-      setState(() {
-        _aadhaarPath = result.files.single.path!;
-      });
+  /// 👁️ View file if available
+  Future<void> _viewFile(MyDocument doc) async {
+    if (doc.documentPath != null) {
+      final url = "https://foxlchits.com${doc.documentPath}";
+      await OpenFilex.open(url);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("No file uploaded for ${doc.documentType}")),
+      );
     }
   }
 
-  Future<void> _viewAadhaar() async {
-    if (_aadhaarPath != null) await OpenFilex.open(_aadhaarPath!);
-  }
-
-  void _deleteAadhaar() {
+  /// ❌ Delete from UI (optional)
+  void _deleteFile(MyDocument doc) {
     setState(() {
-      _aadhaarPath = null;
+      _documents = _documents.map((d) {
+        if (d.id == doc.id) {
+          return MyDocument(
+            id: d.id,
+            documentType: d.documentType,
+            documentPath: null, // mark deleted
+            status: "Pending",
+            uploadedAt: d.uploadedAt,
+            verifiedAt: d.verifiedAt,
+          );
+        }
+        return d;
+      }).toList();
     });
   }
 
+
+  // ====================== UI (unchanged structure) ======================
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
-
-    bool isBankUploaded = _bankStatementPath != null;
-    bool isAadhaarUploaded = _aadhaarPath != null;
-    bool allUploaded = isBankUploaded && isAadhaarUploaded; // ✅ Check all
+    bool allUploaded =
+        _documents.isNotEmpty && _documents.every((d) => d.documentPath != null);
 
     return Scaffold(
       backgroundColor: const Color(0xff000000),
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: Colors.white))
+            : SingleChildScrollView(
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
             child: Column(
@@ -102,29 +231,21 @@ class _attach_fileState extends State<attach_file> {
                 ),
                 SizedBox(height: size.height * 0.04),
 
-                // BANK STATEMENT
-                _buildDocumentRow(
-                  size,
-                  title: 'Bank Statement',
-                  isUploaded: isBankUploaded,
-                  onAdd: _pickBankStatement,
-                  onView: _viewBankStatement,
-                  onDelete: _deleteBankStatement,
-                ),
+                // 🔁 Build all document rows dynamically
+                ..._documents.map((doc) => Padding(
+                  padding: EdgeInsets.only(bottom: size.height * 0.03),
+                  child: _buildDocumentRow(
+                    size,
+                    title: doc.documentType,
+                    isUploaded: doc.documentPath != null,
+                    onAdd: () => _pickFile(doc),
+                    onView: () => _viewFile(doc),
+                    onDelete: () => _deleteFile(doc),
+                    status: doc.status,
+                  ),
+                )),
 
-                SizedBox(height: size.height * 0.04),
-
-                // AADHAAR
-                _buildDocumentRow(
-                  size,
-                  title: 'Aadhaar',
-                  isUploaded: isAadhaarUploaded,
-                  onAdd: _pickAadhaar,
-                  onView: _viewAadhaar,
-                  onDelete: _deleteAadhaar,
-                ),
-
-                // ✅ SINGLE CONTINUE BUTTON AT THE END
+                // Continue button
                 if (allUploaded) _buildContinueButton(context, size),
               ],
             ),
@@ -134,7 +255,7 @@ class _attach_fileState extends State<attach_file> {
     );
   }
 
-  // Reusable Document Row
+  // ✅ Reusable document row (UI stays same)
   Widget _buildDocumentRow(
       Size size, {
         required String title,
@@ -142,6 +263,7 @@ class _attach_fileState extends State<attach_file> {
         required VoidCallback onAdd,
         required VoidCallback onView,
         required VoidCallback onDelete,
+        String? status,
       }) {
     return Container(
       width: double.infinity,
@@ -183,6 +305,10 @@ class _attach_fileState extends State<attach_file> {
                   height: 20,
                 ),
               ),
+              if (status == "Verified") ...[
+                SizedBox(width: size.width * 0.02),
+                const Icon(Icons.check_circle, color: Colors.green, size: 18),
+              ],
               SizedBox(width: size.width * 0.03),
               GestureDetector(
                 onTap: onDelete,
@@ -199,7 +325,6 @@ class _attach_fileState extends State<attach_file> {
     );
   }
 
-  // Reusable Continue Button
   Widget _buildContinueButton(BuildContext context, Size size) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: size.height * 0.03),

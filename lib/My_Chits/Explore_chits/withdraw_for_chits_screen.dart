@@ -4,14 +4,14 @@ import 'package:user_app/My_Chits/Explore_chits/add_account_screen.dart';
 
 import 'explore_chit_screen.dart';
 
-class withdraw extends StatefulWidget {
-  const withdraw({super.key});
+class withdraw_for_chits extends StatefulWidget {
+  const withdraw_for_chits({super.key});
 
   @override
-  State<withdraw> createState() => _withdrawState();
+  State<withdraw_for_chits> createState() => _withdraw_for_chitsState();
 }
 
-class _withdrawState extends State<withdraw> {
+class _withdraw_for_chitsState extends State<withdraw_for_chits> {
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;

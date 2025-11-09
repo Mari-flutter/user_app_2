@@ -1,54 +1,48 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:user_app/Live_Auction/winner_screen_demo.dart';
-import 'package:web_socket_channel/io.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 
+import '../Services/secure_storage.dart';
+import '../Services/websocket_service.dart';
+import 'draw_auction_loading.dart';
 import 'draw_for_loosers.dart';
 
+class AuctionMessage {
+  final String userName;
+  final double amount;
 
-// Minimal BidMessage model
-class BidMessage {
-  final String userId;
-  final String username;
-  final int bid;
-  final DateTime timestamp;
+  AuctionMessage({required this.userName, required this.amount});
 
-  BidMessage({
-    required this.userId,
-    required this.username,
-    required this.bid,
-    required this.timestamp,
-  });
-
-  Map<String, dynamic> toJson() => {
-    'userId': userId,
-    'username': username,
-    'bid': bid,
-    'timestamp': timestamp.toIso8601String(),
-  };
-
-  factory BidMessage.fromJson(Map<String, dynamic> json) => BidMessage(
-    userId: json['userId'] as String,
-    username: json['username'] as String,
-    bid: (json['bid'] is int) ? json['bid'] : int.parse(json['bid'].toString()),
-    timestamp: DateTime.parse(json['timestamp'] as String),
-  );
+  factory AuctionMessage.fromJson(Map<String, dynamic> json) {
+    return AuctionMessage(
+      userName: json['userName'] ?? json['bidder'] ?? 'Unknown',
+      amount: (json['amount'] ?? 0).toDouble(),
+    );
+  }
 }
 
 class auction_screen extends StatefulWidget {
-  final String wsUrl;
   final String myUserId;
   final String myUsername;
+  final String chitId;
+  final String chitName;
+  final double chitValue;
+  final double minBid;
+  final double maxBid;
+  final int  TotalUsers;
 
   const auction_screen({
     super.key,
-    required this.wsUrl,
     required this.myUserId,
     required this.myUsername,
+    required this.chitId,
+    required this.chitName,
+    required this.chitValue,
+    required this.minBid,
+    required this.maxBid,
+    required this. TotalUsers,
   });
 
   @override
@@ -56,132 +50,149 @@ class auction_screen extends StatefulWidget {
 }
 
 class _auction_screenState extends State<auction_screen> {
-  int participantsCount = 0;
-  TextEditingController _controller = TextEditingController();
-  final last_minute = true;
   bool _showBackWarning = false;
-  String? _errorMessage; // 🔹 dynamic error message text
+  final ws = WebSocketService();
+  final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
-  // WebSocket setup
-  late WebSocketChannel _channel;
+  List<AuctionMessage> _messages = [];
+  Timer? _auctionTimer;
+  int _remainingSeconds = 60;
+  Color _timerColor = const Color(0xff3A7AFF);
+  String? _errorMessage;
+  String? userId;
+  int participantsCount = 0;
+  List<String> maxBidders = [];
+  bool isDrawInProgress = false;
 
-  // List of messages/bids
-  List<BidMessage> _messages = [];
 
   @override
   void initState() {
     super.initState();
-    connect();
-  }
+    _loadUserData();
+    ws.connect();
 
-  // Call this whenever a new bid is received
-  void startBidTimer() {
-    _auctionTimer?.cancel(); // cancel previous timer if running
-    setState(() {
-      _remainingSeconds = 60;
-      _timerColor = Color(0xff3A7AFF); // blue
+    // ✅ Re-register on join
+    Future.delayed(const Duration(milliseconds: 500), () {
+      final joinMsg = {
+        "type": "JOIN",
+        "userId": widget.myUserId,
+        "userName": widget.myUsername,
+        "chitId": widget.chitId.trim(),
+      };
+      ws.send(joinMsg);
+      print("📡 Sent JOIN again from auction_screen: $joinMsg");
     });
 
-    _auctionTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+    // ✅ Start listening
+    ws.onMessage = (jsonData) => handleMessage(jsonData);
+  }
+
+  Future<void> _loadUserData() async {
+    final id = await SecureStorageService.getUserId();
+    setState(() => userId = id);
+  }
+
+  void handleMessage(Map<String, dynamic> jsonData) {
+    switch (jsonData['type']) {
+      case 'TIMER_START':
+        setState(() => _remainingSeconds = jsonData['timeLeft'] ?? 120);
+        startBidTimer();
+        break;
+
+      case 'TIMER_TICK':
+        setState(() => _remainingSeconds = jsonData['timeLeft']);
+        break;
+
+      case 'NEW_BID':
+        print("🔥 NEW_BID RECEIVED: $jsonData");
+        final bidderName = jsonData['bidder'] ?? jsonData['userName'] ??
+            'Unknown';
+        final amount = (jsonData['amount'] as num?)?.toDouble() ?? 0.0;
+
+        final isMaxBid = amount >= widget.maxBid;
+
+        final bidMessage = AuctionMessage(userName: bidderName, amount: amount);
+        setState(() {
+          _messages.insert(0, bidMessage);
+          if (isMaxBid && !maxBidders.contains(bidderName)) {
+            maxBidders.add(bidderName);
+          }
+        });
+        break;
+
+      case 'USERS_JOINED':
+        setState(() =>
+        participantsCount = jsonData['count'] ?? participantsCount);
+        break;
+
+    // 🎯 Tie detected — move to draw loading screen
+      case 'WINNER_TIE':
+        print("🎲 Tie detected → ${jsonData['message']}");
+        _showDrawScreen();
+        break;
+
+    // 🎯 Backend picked random winner
+      case 'WINNER_RANDOM':
+        print("🏁 Random winner selected: ${jsonData['winner']}");
+        Future.delayed(const Duration(seconds: 3), () {
+          navigateToWinnerFromBackend(jsonData);
+        });
+        break;
+
+    // 🥇 Final winner decided — direct result
+      case 'WINNER_FINAL':
+        print("🥇 Final winner declared: ${jsonData['winner']}");
+        if (!isDrawInProgress) {
+          isDrawInProgress = true;
+          Future.delayed(const Duration(seconds: 2), () {
+            navigateToWinnerFromBackend(jsonData);
+          });
+        }
+        break;
+
+      default:
+        print('[WS] Unknown: ${jsonData['type']}');
+    }
+  }
+
+
+  void _showDrawScreen() {
+    if (isDrawInProgress) return;
+    isDrawInProgress = true;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            draw_auction_loading(
+              chitName: widget.chitName,
+              chitValue: widget.chitValue,
+              userId: widget.myUserId,
+              maxBidders: maxBidders,
+              maxBid: widget.maxBid,
+            ),
+      ),
+    );
+
+    // Reset after 6 seconds so new navigation can occur
+    Future.delayed(const Duration(seconds: 6), () {
+      isDrawInProgress = false;
+    });
+  }
+
+
+  void startBidTimer() {
+    _auctionTimer?.cancel();
+    _auctionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
 
       setState(() {
         _remainingSeconds--;
-
-        if (_remainingSeconds <= 30) {
-          _timerColor = Color(0xffC60F12); // red for last 30s
-        }
-
+        if (_remainingSeconds <= 30) _timerColor = const Color(0xffC60F12);
         if (_remainingSeconds <= 0) {
           timer.cancel();
           _remainingSeconds = 0;
-          // Auction round over, you can trigger winner logic here
-        }
-      });
-    });
-  }
-
-  void navigateToWinner() {
-    if (_messages.isEmpty) return;
-
-    // Get the highest bid
-    final winner = _messages.reduce((a, b) => a.bid > b.bid ? a : b);
-
-    if (winner.userId == widget.myUserId) {
-      // Current user is the winner
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              WinnerScreen(winnerName: winner.username, winnerBid: winner.bid),
-        ),
-      );
-    } else {
-      // Current user is NOT the winner
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const draw_for_loosers()),
-      );
-    }
-  }
-
-  //Listener
-  bool _maxBidMessageShown = false;
-
-  void connect() {
-    try {
-      _channel = IOWebSocketChannel.connect(widget.wsUrl);
-      print('[WS] connecting to ${widget.wsUrl}');
-      _channel.stream.listen((event) {
-        final jsonData = jsonDecode(event);
-
-        if (jsonData['type'] == 'BID') {
-          final bidMessage = BidMessage.fromJson(jsonData);
-          setState(() {
-            _messages.insert(0, BidMessage.fromJson(jsonData));
-          });
-          if (bidMessage.bid >= 40000 && !_maxBidMessageShown) {
-            _showInlineError("Maximum bid reached!");
-            _maxBidMessageShown = true;
-          }
-        } else if (jsonData['type'] == 'TIMER_UPDATE') {
-          setState(() {
-            _remainingSeconds = jsonData['seconds'];
-            _timerColor = (_remainingSeconds <= 30)
-                ? Color(0xffC60F12)
-                : Color(0xff3A7AFF);
-          });
-        } else if (jsonData['type'] == 'AUCTION_END') {
-          navigateToWinner();
-        } else if (jsonData['type'] == 'PARTICIPANTS_UPDATE') {
-          setState(() {
-            participantsCount = jsonData['count'];
-          });
-        }
-      });
-    } catch (e) {
-      print('[WS] connect error: $e');
-    }
-  }
-
-  void resetAuctionTimer() {
-    _auctionTimer.cancel(); // stop previous timer
-    _remainingSeconds = 60;
-    _timerColor = const Color(0xff3A7AFF); // blue
-
-    _auctionTimer = Timer.periodic(Duration(seconds: 1), (timer) {
-      if (!mounted) return;
-
-      setState(() {
-        _remainingSeconds--;
-
-        if (_remainingSeconds <= 30) {
-          _timerColor = const Color(0xffC60F12); // red
-        }
-
-        if (_remainingSeconds <= 0) {
-          timer.cancel();
-          navigateToWinner();
         }
       });
     });
@@ -189,95 +200,83 @@ class _auction_screenState extends State<auction_screen> {
 
   void sendBid() {
     final text = _controller.text.trim();
-    if (text.isEmpty) {
-      _showInlineError("Please enter a bid amount.");
-      return;
-    }
-
     final bid = int.tryParse(text);
+
     if (bid == null || bid <= 0) {
-      _showInlineError("Please enter a valid number.");
+      _showInlineError("Enter a valid bid");
       return;
     }
 
-    // 🔹 Define min & max bid limits
-    const minBid = 1000;
-    const maxBid = 40000;
-
-    // 🔹 Get the current highest (last) bid
-    int? lastBid;
-    if (_messages.isNotEmpty) {
-      lastBid = _messages.first.bid;
-    }
-
-    // Normal bidding
-    if (lastBid != null && lastBid < maxBid) {
-      if (bid <= lastBid) {
-        _showInlineError("Your bid must be higher than ₹$lastBid.");
-        return;
-      }
-      if (bid > maxBid) {
-        _showInlineError("Maximum bid is ₹$maxBid.");
-        return;
-      }
-    }
-    // Once max bid reached
-    if (lastBid != null && lastBid >= maxBid && bid != maxBid) {
-      _showInlineError("Only ₹$maxBid is allowed.");
-      return;
-    }
-
-    // if (bid > maxBid) {
-    //   _showInlineError("Maximum bid is ₹$maxBid.");
-    //   return;
-    // }
-
-    // // 🧱 Must be higher than the last bid
-    // if (lastBid != null && bid <= lastBid) {
-    //   _showInlineError("Your bid must be higher than ₹$lastBid.");
-    //   return;
-    // }
-
-    // Passed all checks → send bid
     final msg = {
       "type": "BID",
+      "chitId": widget.chitId.trim().toLowerCase(),
       "userId": widget.myUserId,
-      "username": widget.myUsername,
-      "bid": bid,
-      "timestamp": DateTime.now().toIso8601String(),
+      "userName": widget.myUsername,
+      "amount": bid,
     };
-
-    _channel.sink.add(jsonEncode(msg));
+    ws.send(msg);
     _controller.clear();
   }
 
-  @override
-  void dispose() {
-    _auctionTimer.cancel();
-    _channel.sink.close();
-    _controller.dispose();
-    super.dispose();
+  void navigateToWinnerFromBackend(Map<String, dynamic> data) {
+    final winnerUserId = data['winner'] ?? '';
+    final winnerName = data['winnerName'] ?? data['winner'] ?? 'Unknown Winner';
+    final amount = (data['amount'] as num?)?.toInt() ?? 0;
+
+    print("🏆 Winner: $winnerName — ₹$amount");
+
+    if (winnerUserId == widget.myUserId) {
+      // 🥇 Current user is the winner
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              WinnerScreen(
+                winnerName: winnerName,
+                winnerBid: amount,
+                chitName: widget.chitName,
+                chitValue: widget.chitValue,
+              ),
+        ),
+      );
+    } else {
+      // 😢 Not winner, show who won
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              draw_for_loosers(
+                winnerName: winnerName,
+                winnerBid: amount,
+                chitName: widget.chitName,
+                chitValue: widget.chitValue,
+              ),
+        ),
+      );
+    }
   }
-
-  late Timer _auctionTimer;
-  int _remainingSeconds = 60; // 1 minute
-  Color _timerColor = Color(0xff3A7AFF); // initial blue
-  bool get isLastMinute => _remainingSeconds <= 30;
-
-  final isSystem = false;
-  final isMe = true;
-  final isMax = true;
 
   void _showInlineError(String message) {
     setState(() => _errorMessage = message);
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 3), () {
       if (mounted) setState(() => _errorMessage = null);
     });
   }
 
   @override
+  void dispose() {
+    _auctionTimer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  bool get isLastMinute => _remainingSeconds <= 30;
+
+  @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
+    Size size = MediaQuery
+        .of(context)
+        .size;
     return WillPopScope(
       onWillPop: () async {
         // Show inline warning
@@ -301,7 +300,7 @@ class _auction_screenState extends State<auction_screen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '₹2 Lakh Chit',
+                              "₹${widget.chitName}",
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffE2E2E2),
@@ -312,7 +311,7 @@ class _auction_screenState extends State<auction_screen> {
                             ),
                             SizedBox(height: size.height * 0.002),
                             Text(
-                              '#F025271',
+                              '$userId',
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffADADAD),
@@ -396,17 +395,23 @@ class _auction_screenState extends State<auction_screen> {
                                 children: [
                                   Image.asset(
                                     'assets/images/Live_Auction/bid_timer.png',
-                                    color: _timerColor,
+                                    color: isLastMinute
+                                        ? Color(0xffC60F12)
+                                        : Color(0xff3A7AFF),
                                     width: 17,
                                     height: 17,
                                   ),
                                   SizedBox(width: size.width * 0.01),
                                   Text(
-                                    'Time Remaining : ${_remainingSeconds ~/ 60}:${(_remainingSeconds % 60).toString().padLeft(2, '0')}',
+                                    'Time Remaining : ${_remainingSeconds ~/
+                                        60}:${(_remainingSeconds % 60)
+                                        .toString()
+                                        .padLeft(2, '0')}',
                                     style: GoogleFonts.urbanist(
                                       textStyle: TextStyle(
-                                        color: _timerColor,
-                                        // 🔹 changes automatically
+                                        color: isLastMinute
+                                            ? Color(0xffC60F12)
+                                            : Color(0xff3A7AFF),
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -454,7 +459,8 @@ class _auction_screenState extends State<auction_screen> {
                                   ),
                                   SizedBox(width: size.width * 0.01),
                                   Text(
-                                    'Participants: $participantsCount/20',
+                                    'Participants: $participantsCount/${widget
+                                        .TotalUsers}',
                                     style: GoogleFonts.urbanist(
                                       textStyle: const TextStyle(
                                         color: Color(0xffFFFFFF),
@@ -521,7 +527,7 @@ class _auction_screenState extends State<auction_screen> {
                             children: [
                               Text(
                                 _messages.isNotEmpty
-                                    ? '${_messages.first.username} (#${_messages.first.userId})'
+                                    ? '${_messages.first.userName}'
                                     : 'No bids yet',
                                 style: GoogleFonts.urbanist(
                                   textStyle: const TextStyle(
@@ -534,7 +540,7 @@ class _auction_screenState extends State<auction_screen> {
                               Spacer(),
                               Text(
                                 _messages.isNotEmpty
-                                    ? '₹ ${_messages.first.bid}'
+                                    ? '₹ ${_messages.first.amount}'
                                     : '₹ 0',
                                 style: GoogleFonts.urbanist(
                                   textStyle: const TextStyle(
@@ -644,13 +650,17 @@ class _auction_screenState extends State<auction_screen> {
                               SizedBox(height: size.height * 0.02),
                               Expanded(
                                 child: ListView.builder(
+                                  controller: _scrollController,
                                   reverse: true,
                                   itemCount: _messages.length,
                                   itemBuilder: (context, i) {
                                     final m = _messages[i];
-                                    final isMe = m.userId == widget.myUserId;
-                                    final isMaxBid = m.bid >= 40000;
-
+                                    final isMe =
+                                        m.userName.trim().toLowerCase() ==
+                                            widget.myUsername
+                                                .trim()
+                                                .toLowerCase();
+                                    final isMaxBid = m.amount >= 40000;
                                     return Align(
                                       alignment: isMe
                                           ? Alignment.centerRight
@@ -666,9 +676,9 @@ class _auction_screenState extends State<auction_screen> {
                                         decoration: BoxDecoration(
                                           border: isMaxBid
                                               ? Border.all(
-                                                  color: Color(0xff3A7AFF),
-                                                  width: 1.5,
-                                                )
+                                            color: Color(0xff3A7AFF),
+                                            width: 1.5,
+                                          )
                                               : null,
                                           color: isMe
                                               ? Color(0xff3A7AFF)
@@ -679,8 +689,9 @@ class _auction_screenState extends State<auction_screen> {
                                         ),
                                         child: Text(
                                           isMaxBid
-                                              ? '${m.username} - ₹${m.bid} Max limit Reached'
-                                              : '${m.username} - ₹${m.bid}',
+                                              ? '${m.userName} - ₹${m
+                                              .amount} Max limit Reached'
+                                              : '${m.userName} - ₹${m.amount}',
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontSize: 13,
@@ -701,7 +712,9 @@ class _auction_screenState extends State<auction_screen> {
 
                   SizedBox(height: size.height * 0.02),
                   Text(
-                    "*Minimum Bed Starts from 1,000/- and Maximum 40,000/-",
+                    "*Minimum Bed Starts from ₹${widget.minBid.toStringAsFixed(
+                        0)}/- and Maximum ₹${widget.maxBid.toStringAsFixed(
+                        0)}/-",
                     style: TextStyle(
                       color: Color(0xff989898),
                       fontSize: 12,

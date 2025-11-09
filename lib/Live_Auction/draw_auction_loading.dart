@@ -1,14 +1,85 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:user_app/Live_Auction/winner_screen_demo.dart';
+
+import '../Services/websocket_service.dart';
+import 'draw_for_loosers.dart';
 
 class draw_auction_loading extends StatefulWidget {
-  const draw_auction_loading({super.key});
+  final String chitName;
+  final double chitValue;
+  final String userId;
+  final List<String> maxBidders;
+  final double maxBid;
+
+  const draw_auction_loading({
+    super.key,
+    required this.chitName,
+    required this.chitValue,
+    required this.userId,
+    required this.maxBidders,
+    required this.maxBid,
+  });
 
   @override
   State<draw_auction_loading> createState() => _draw_auction_loadingState();
 }
 
 class _draw_auction_loadingState extends State<draw_auction_loading> {
+  final ws = WebSocketService();
+  bool _navigated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _listenForWinnerUpdates();
+  }
+
+  void _listenForWinnerUpdates() {
+    ws.connect();
+    ws.onMessage = (data) {
+      if (_navigated) return; // prevent duplicate navigation
+
+      print("📩 [DRAW_SCREEN] WS Message: $data");
+
+      if (data['type'] == 'WINNER_RANDOM' || data['type'] == 'WINNER_FINAL') {
+        _navigated = true;
+        final winnerUserId = data['winner'] ?? '';
+        final winnerName = data['winnerName'] ?? data['winner'] ?? 'Unknown';
+        final amount = (data['amount'] as num?)?.toInt() ?? 0;
+
+        // 🎯 Small suspense delay for smooth animation feel
+        Future.delayed(const Duration(seconds: 3), () {
+          if (winnerUserId == widget.userId) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => WinnerScreen(
+                  winnerName: winnerName,
+                  winnerBid: amount,
+                  chitName: widget.chitName,
+                  chitValue: widget.chitValue,
+                ),
+              ),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => draw_for_loosers(
+                  winnerName: winnerName,
+                  winnerBid: amount,
+                  chitName: widget.chitName,
+                  chitValue: widget.chitValue,
+                ),
+              ),
+            );
+          }
+        });
+      }
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -29,7 +100,7 @@ class _draw_auction_loadingState extends State<draw_auction_loading> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '₹2 Lakh Chit',
+                            "₹${widget.chitName}",
                             style: GoogleFonts.urbanist(
                               textStyle: const TextStyle(
                                 color: Color(0xffE2E2E2),
@@ -40,7 +111,7 @@ class _draw_auction_loadingState extends State<draw_auction_loading> {
                           ),
                           SizedBox(height: size.height * 0.002),
                           Text(
-                            '#F025271',
+                            '${widget.userId}',
                             style: GoogleFonts.urbanist(
                               textStyle: const TextStyle(
                                 color: Color(0xffADADAD),
@@ -215,16 +286,14 @@ class _draw_auction_loadingState extends State<draw_auction_loading> {
                           child: SingleChildScrollView(
                             child: Column(
                               children: List.generate(
-                                6,
-                                (index) => Padding(
-                                  padding: EdgeInsets.only(
-                                    bottom: size.height * 0.002,
-                                  ),
+                                widget.maxBidders.length,
+                                    (index) => Padding(
+                                  padding: EdgeInsets.only(bottom: size.height * 0.002),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
-                                        'Rajesh Kumar (#fu02537)',
+                                        widget.maxBidders[index],
                                         style: GoogleFonts.urbanist(
                                           textStyle: const TextStyle(
                                             color: Color(0xffFFFFFF),
@@ -235,7 +304,7 @@ class _draw_auction_loadingState extends State<draw_auction_loading> {
                                       ),
                                       const Spacer(),
                                       Text(
-                                        '₹ 12000',
+                                        '₹ ${widget.maxBid.toStringAsFixed(0)}',
                                         style: GoogleFonts.urbanist(
                                           textStyle: const TextStyle(
                                             color: Color(0xffE2E2E2),

@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:user_app/My_Chits/Explore_chits/auction_result_screen.dart';
 import 'package:user_app/My_Chits/Explore_chits/chit_scheme_screen.dart';
 import 'package:user_app/My_Chits/Explore_chits/terms_and_condition_screen.dart';
-import 'package:user_app/My_Chits/Explore_chits/withdraw_screen.dart';
+import 'package:user_app/My_Chits/Explore_chits/withdraw_for_chits_screen.dart';
 import 'package:user_app/My_Chits/my_chits.dart';
 import 'package:user_app/My_Chits/Explore_chits/receipts_screen.dart';
 import 'dart:async';
@@ -54,7 +54,7 @@ class _explore_chitState extends State<explore_chit> {
     auction_result(),
     receipts(),
     terms_condition(),
-    withdraw(),
+    withdraw_for_chits(),
   ];
   final bool isPay_due = true;
 

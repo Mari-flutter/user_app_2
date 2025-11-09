@@ -28,6 +28,7 @@ class _loginState extends State<login> {
   int resendTimer = 0;
   Timer? timer;
 
+  @override
   void sendOtp() async {
     final phone = _phoneController.text.trim();
 
@@ -348,65 +349,6 @@ class _loginState extends State<login> {
                   alignment: Alignment.bottomRight,
                   child: GestureDetector(
                     onTap: () {
-                      // final otp = _otpController.text.trim();
-                      // final phone = _phoneController.text.trim();
-                      //
-                      // if (otp.isEmpty) {
-                      //   ScaffoldMessenger.of(context).showSnackBar(
-                      //     const SnackBar(
-                      //       content: Text("Please enter OTP"),
-                      //       backgroundColor: Colors.redAccent,
-                      //     ),
-                      //   );
-                      //   return;
-                      // }
-                      //
-                      // try {
-                      //   final verifyBody = VerifyOtpModel(
-                      //     phoneNumber: phone,
-                      //     otp: otp,
-                      //   );
-                      //
-                      //   final response = await http.post(
-                      //     Uri.parse(
-                      //       "https://foxlchits.com/api/AuthPhoneUser/verify-otp",
-                      //     ),
-                      //     headers: {"Content-Type": "application/json"},
-                      //     body: jsonEncode(verifyBody.toJson()),
-                      //   );
-                      //
-                      //   if (response.statusCode == 200) {
-                      //     // ✅ OTP Verified successfully
-                      //     ScaffoldMessenger.of(context).showSnackBar(
-                      //       const SnackBar(
-                      //         content: Text("OTP Verified Successfully"),
-                      //         backgroundColor: Color(0xff07C66A),
-                      //       ),
-                      //     );
-                      //
-                      //     Navigator.pushReplacement(
-                      //       context,
-                      //       MaterialPageRoute(
-                      //         builder: (context) => HomeLayout(),
-                      //       ),
-                      //     );
-                      //   } else {
-                      //     // ❌ Wrong OTP or expired
-                      //     ScaffoldMessenger.of(context).showSnackBar(
-                      //       const SnackBar(
-                      //         content: Text("Invalid OTP. Please try again."),
-                      //         backgroundColor: Colors.redAccent,
-                      //       ),
-                      //     );
-                      //   }
-                      // } catch (e) {
-                      //   ScaffoldMessenger.of(context).showSnackBar(
-                      //     SnackBar(
-                      //       content: Text("Error verifying OTP: $e"),
-                      //       backgroundColor: Colors.redAccent,
-                      //     ),
-                      //   );
-                      // }
                       verifyOtp();
                     },
 

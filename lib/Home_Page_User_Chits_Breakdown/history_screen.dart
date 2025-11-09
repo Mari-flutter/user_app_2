@@ -65,11 +65,17 @@ class _HistoryState extends State<History> {
                   width: 30,
                   height: 30,
                   decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Color(0xff282828)),
+                    borderRadius: BorderRadius.circular(8),
+                    color: Color(0xff282828),
+                  ),
                   child: Center(
                     child: GestureDetector(
-                      onTap: (){Navigator.push(context, MaterialPageRoute(builder: (context)=>HomeLayout()));},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => HomeLayout()),
+                        );
+                      },
                       child: Image.asset(
                         'assets/images/Home_Page_User_Chits_Breakdown/back.png',
                         width: 15,
@@ -78,7 +84,7 @@ class _HistoryState extends State<History> {
                     ),
                   ),
                 ),
-                SizedBox(width: size.width*0.03,),
+                SizedBox(width: size.width * 0.03),
                 Text(
                   'Breakdown',
                   style: GoogleFonts.urbanist(
@@ -93,18 +99,17 @@ class _HistoryState extends State<History> {
             ),
             SizedBox(height: size.height * 0.02),
 
-            // 🔹 Summary Card
             Stack(
               children: [
                 Container(
                   width: double.infinity,
                   height: 189,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(25),
-                    gradient: const LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [Color(0xff3B69CF), Color(0xff000000)],
+                    image: DecorationImage(
+                      image: AssetImage(
+                        'assets/images/Home/Home_screen_main card_1.jpg',
+                      ),
+                      fit: BoxFit.fill, // full screen
                     ),
                   ),
                   child: Padding(
@@ -115,53 +120,41 @@ class _HistoryState extends State<History> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Text(
+                          'Hi Tom,',
+                          style: GoogleFonts.urbanist(
+                            textStyle: const TextStyle(
+                              color: Color(0xffF8F8F8),
+                              fontSize: 24,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: size.height * 0.005),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Hi Tom,',
+                              '₹ 2,40,000',
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
-                                  color: Color(0xffF8F8F8),
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xffFFFFFF),
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
-                            Container(
-                              width: 91,
-                              height: 22,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(6),
-                                color: const Color(
-                                  0xff8484844D,
-                                ).withOpacity(0.3),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  'Pending Dues',
-                                  style: GoogleFonts.urbanist(
-                                    textStyle: const TextStyle(
-                                      color: Color(0xffFFFFFF),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
+                            SizedBox(width: size.width * 0.03),
+                            Text(
+                              'total subscription value',
+                              style: GoogleFonts.urbanist(
+                                textStyle: const TextStyle(
+                                  color: Color(0xffFFFFFF),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                           ],
-                        ),
-                        SizedBox(height: size.height * 0.005),
-                        Text(
-                          '₹ 2,40,000',
-                          style: GoogleFonts.urbanist(
-                            textStyle: const TextStyle(
-                              color: Color(0xffFFFFFF),
-                              fontSize: 32,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
                         ),
                         SizedBox(height: size.height * 0.005),
                         Column(
@@ -170,27 +163,33 @@ class _HistoryState extends State<History> {
                             Text(
                               'Total Chit Taken : 2',
                               style: GoogleFonts.urbanist(
-                                color: const Color(0xffF8F8F8),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                                textStyle: const TextStyle(
+                                  color: Color(0xffF8F8F8),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
-                            SizedBox(height: 4),
+                            SizedBox(height: size.height * 0.002),
                             Text(
-                              'Upcoming Auction in 7 days',
+                              'Upcoming Auction on 7 days',
                               style: GoogleFonts.urbanist(
-                                color: const Color(0xffF8F8F8),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                                textStyle: const TextStyle(
+                                  color: Color(0xffF8F8F8),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
-                            SizedBox(height: 4),
+                            SizedBox(height: size.height * 0.002),
                             Text(
-                              'Wants to pay a month : ₹12,000/-',
+                              'Wants to pay a month : 12,000/-',
                               style: GoogleFonts.urbanist(
-                                color: const Color(0xffF8F8F8),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                                textStyle: const TextStyle(
+                                  color: Color(0xffF8F8F8),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ],
@@ -200,12 +199,12 @@ class _HistoryState extends State<History> {
                   ),
                 ),
                 Positioned(
-                  bottom: 0,
-                  right: 0,
+                  bottom: 10,
+                  right: 15,
                   child: Image.asset(
                     'assets/images/Home/container.png',
-                    width: 143,
-                    height: 53,
+                    width: 107,
+                    height: 90,
                   ),
                 ),
               ],

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:user_app/My_Chits/Explore_chits/receipts_screen.dart';
+
+import '../../Receipt_Generate/chit_receipt.dart';
 
 class download_receipts extends StatefulWidget {
   const download_receipts({super.key});
@@ -25,10 +28,18 @@ class _download_receiptsState extends State<download_receipts> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Image.asset(
-                      'assets/images/My_Chits/back_arrow.png',
-                      width: 24,
-                      height: 24,
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => receipts()),
+                        );
+                      },
+                      child: Image.asset(
+                        'assets/images/My_Chits/back_arrow.png',
+                        width: 24,
+                        height: 24,
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -388,7 +399,7 @@ class _download_receiptsState extends State<download_receipts> {
                                 color: const Color(0xFF5B8EF8),
                               ),
                             ),
-                              const SizedBox(height: 5),
+                            const SizedBox(height: 5),
                             Text(
                               "Amount in words: Ten Thousand Six Hundred Ninety Rupees Only",
                               style: GoogleFonts.urbanist(
@@ -404,33 +415,49 @@ class _download_receiptsState extends State<download_receipts> {
                       const SizedBox(height: 20),
 
                       // 🔹 Download Receipt Button
-                      Container(
-                        width: double.infinity,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF151515),
-                          borderRadius: BorderRadius.circular(7),
-                        ),
-                        child: Center(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Image.asset(
-                                'assets/images/My_Chits/download.png',
-                                width: 20,
-                                height: 20,
-                                fit: BoxFit.contain,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                "Download Receipt",
-                                style: GoogleFonts.urbanist(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
+                      GestureDetector(
+                        onTap:  () async {
+                          await ChitReceiptPDF(context, {
+                            'bookingId': '#GOLD4257',
+                            'customerName': 'Thanish Prakash',
+                            'customerId': '#FOX65432',
+                            'contactNumber': '+91 98765 43210',
+                            'transactionDate': '11 November 2025',
+                            'collectionMethod': 'Online',
+                            'goldDetails': '10g',
+                            'bookingDate': '11 November 2025',
+                            'storeLocation': 'Malabar - Gandhipuram, Coimbatore',
+                            'storeContact': '+91 80 6789 5432',
+                          });
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF151515),
+                            borderRadius: BorderRadius.circular(7),
+                          ),
+                          child: Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Image.asset(
+                                  'assets/images/My_Chits/download.png',
+                                  width: 20,
+                                  height: 20,
+                                  fit: BoxFit.contain,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 12),
+                                Text(
+                                  "Download Receipt",
+                                  style: GoogleFonts.urbanist(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),

@@ -2,14 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:user_app/Bottom_Navbar/bottom_navigation_bar.dart';
 
+import '../Services/secure_storage.dart';
+
 class draw_for_loosers extends StatefulWidget {
-  const draw_for_loosers({super.key});
+  final String winnerName;
+  final int winnerBid;
+  final String chitName;
+  final double chitValue;
+
+  const draw_for_loosers({
+    super.key,
+    required this.winnerName,
+    required this.winnerBid,
+    required this.chitName,
+    required this.chitValue,
+  });
 
   @override
   State<draw_for_loosers> createState() => _draw_for_loosersState();
 }
 
+
 class _draw_for_loosersState extends State<draw_for_loosers> {
+  String? userId;
+  @override
+  void initState() {
+    super.initState();
+    _loadUserDataAndChits();
+  }
+  Future<void> _loadUserDataAndChits() async {
+    final id = await SecureStorageService.getUserId();
+    setState(() {
+      userId = id;
+    });
+
+  }
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -30,7 +57,7 @@ class _draw_for_loosersState extends State<draw_for_loosers> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '₹2 Lakh Chit',
+                            "₹${widget.chitName}",
                             style: GoogleFonts.urbanist(
                               textStyle: const TextStyle(
                                 color: Color(0xffE2E2E2),
@@ -41,7 +68,7 @@ class _draw_for_loosersState extends State<draw_for_loosers> {
                           ),
                           SizedBox(height: size.height * 0.002),
                           Text(
-                            '#F025271',
+                            '${userId}',
                             style: GoogleFonts.urbanist(
                               textStyle: const TextStyle(
                                 color: Color(0xffADADAD),
@@ -99,7 +126,7 @@ class _draw_for_loosersState extends State<draw_for_loosers> {
                 SizedBox(height: size.height * 0.04),
                 Center(
                   child: Text(
-                    'Draw win by Rajesh Kumar',
+                    'Auction win by ${widget.winnerName}',
                     style: GoogleFonts.urbanist(
                       textStyle: TextStyle(
                         fontSize: 20,

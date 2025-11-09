@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:user_app/My_Chits/Explore_chits/processing_transfer_screen.dart';
-import 'package:user_app/My_Chits/Explore_chits/withdraw_screen.dart';
+import 'package:user_app/My_Chits/Explore_chits/withdraw_for_chits_screen.dart';
 import 'instant_transfer_screen.dart';
 
 class add_account extends StatefulWidget {
@@ -147,7 +147,7 @@ class _add_accountState extends State<add_account> {
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => withdraw()),
+                            MaterialPageRoute(builder: (context) => withdraw_for_chits()),
                           );
                         },
                         child: Image.asset(

@@ -1,20 +1,153 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:user_app/Investments/Gold/confirmation_receipt_for_sell_gold_now.dart';
-import 'package:user_app/Investments/Gold/store_selection_screen.dart';
+import 'package:user_app/Investments/Gold/gold_investment_screen.dart';
 
-import '../toggle_screen_gold_realestate.dart';
+import '../../Models/Investments/Gold/CurrentGoldValue_Model.dart';
+import '../../Models/Investments/Gold/sell_gold_model.dart';
+import '../../Models/Investments/Gold/user_hold_gold_model.dart';
+import '../../Services/Gold_holdings.dart';
+import '../../Services/Gold_price.dart';
+import '../../Services/secure_storage.dart';
 
 class sell_gold_now extends StatefulWidget {
+  final double enteredGrams;
+  final double estimateAmount;
   final VoidCallback? onBackToGold;
 
-  const sell_gold_now({super.key, this.onBackToGold});
+  const sell_gold_now({
+    super.key,
+    required this.enteredGrams,
+    required this.estimateAmount,
+    this.onBackToGold,
+  });
 
   @override
   State<sell_gold_now> createState() => _sell_gold_nowState();
 }
 
 class _sell_gold_nowState extends State<sell_gold_now> {
+  CurrentGoldValue? _goldValue;
+  GoldHoldings? goldHoldings;
+  bool _loading = true;
+  @override
+  void initState() {
+    super.initState();
+    _loadGoldValue();
+    _loadGoldHoldings();
+  }
+  Future<void> _loadGoldHoldings() async {
+    // Step 1️⃣ — Load cached data immediately
+    final cached = await GoldHoldingsService.getCachedGoldHoldings();
+    if (cached != null) {
+      setState(() {
+        goldHoldings = cached;
+      });
+    }
+
+    // Step 2️⃣ — Background fetch new data silently
+    final latest = await GoldHoldingsService.fetchAndCacheGoldHoldings();
+    if (latest != null) {
+      // If new data differs, update UI automatically
+      if (latest.userGold != goldHoldings?.userGold ||
+          latest.userInvestment != goldHoldings?.userInvestment) {
+        setState(() {
+          goldHoldings = latest;
+        });
+      }
+    }
+  }
+
+  Future<void> sellGold() async {
+    final String apiUrl = "https://foxlchits.com/api/AddYourGold/sell";
+
+    // 🧠 Retrieve userId securely
+    final userId = await SecureStorageService.getProfileId();
+
+    if (userId == null || userId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("User not logged in")),
+      );
+      return;
+    }
+
+    final double amount = double.parse(widget.estimateAmount.toStringAsFixed(0));
+
+    final sellGoldData = SellGoldModel(
+      userId: userId,
+      amount: amount,
+      type: "Sell",
+    );
+
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(sellGoldData.toJson()),
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        print("✅ Sell Success: $jsonResponse");
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Gold sold successfully!")),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => confirmation_receipt_for_sell_gold_now(),
+          ),
+        );
+      } else {
+        print("❌ Sell Failed: ${response.body}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to sell gold. Try again.")),
+        );
+      }
+    } catch (e) {
+      print("⚠️ Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    }
+  }
+
+  Future<void> _loadGoldValue() async {
+    // 1️⃣ Load cached value first
+    final cachedValue = await GoldService.getCachedGoldValue();
+    if (cachedValue != null) {
+      print('💾 Showing cached gold value: ₹${cachedValue.goldValue}');
+      setState(() {
+        _goldValue = cachedValue;
+        _loading = false;
+      });
+    } else {
+      print('⚠️ No cached value, showing loader...');
+      setState(() {
+        _loading = true;
+      });
+    }
+
+    // 2️⃣ Fetch updated gold value in background
+    try {
+      print('🔹 Fetching latest gold price...');
+      final latestValue = await GoldService.fetchAndCacheGoldValue();
+      if (!mounted) return;
+      if (latestValue != null) {
+        setState(() {
+          _goldValue = latestValue;
+          _loading = false;
+        });
+        print('🌐 Updated to latest gold value: ₹${latestValue.goldValue}');
+      }
+    } catch (e) {
+      print('❌ Error fetching gold value: $e');
+    }
+  }
   @override
   Widget build(BuildContext context) {
     TextEditingController _controller = TextEditingController();
@@ -36,10 +169,8 @@ class _sell_gold_nowState extends State<sell_gold_now> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => toggle_gold_realestate(
-                              initialIsGold: true,
-                              initialTab: 1,
-                            ),
+                            builder: (context) =>
+                                gold_investment(initialTab: 1),
                           ),
                         );
                       },
@@ -98,8 +229,14 @@ class _sell_gold_nowState extends State<sell_gold_now> {
                                     ),
                                   ),
                                 ),
+                                _loading
+                                    ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                )
+                                    :
                                 Text(
-                                  '₹6,250/g',
+                                  '₹${_goldValue?.goldValue.toStringAsFixed(2) ?? '--'}/g',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xffFFFFFF),
@@ -109,7 +246,9 @@ class _sell_gold_nowState extends State<sell_gold_now> {
                                   ),
                                 ),
                                 Text(
-                                  '+2.3% today',
+                                  _goldValue != null
+                                      ? 'Updated on ${_goldValue!.date.toLocal().toString().split(" ").first}'
+                                      : '',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xffFFFFFF),
@@ -134,7 +273,7 @@ class _sell_gold_nowState extends State<sell_gold_now> {
                                   ),
                                 ),
                                 Text(
-                                  '28.5 grams',
+                                  '${goldHoldings?.userGold.toStringAsFixed(2) ?? '--'} g',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xffFFFFFF),
@@ -144,7 +283,7 @@ class _sell_gold_nowState extends State<sell_gold_now> {
                                   ),
                                 ),
                                 Text(
-                                  '₹1,78,125',
+                                  '₹${goldHoldings?.userInvestment.toStringAsFixed(0) ?? '--'}',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xffFFFFFF),
@@ -219,7 +358,7 @@ class _sell_gold_nowState extends State<sell_gold_now> {
                                       Align(
                                         alignment: Alignment.centerLeft,
                                         child: Text(
-                                          '8.5',
+                                          widget.enteredGrams.toStringAsFixed(2),
                                           style: GoogleFonts.urbanist(
                                             textStyle: const TextStyle(
                                               color: Color(0xffDBDBDB),
@@ -261,7 +400,7 @@ class _sell_gold_nowState extends State<sell_gold_now> {
                                       Align(
                                         alignment: Alignment.centerLeft,
                                         child: Text(
-                                          '₹92,320',
+                                          '₹${widget.estimateAmount.toStringAsFixed(0)}',
                                           style: GoogleFonts.urbanist(
                                             textStyle: const TextStyle(
                                               color: Color(0xffDBDBDB),
@@ -281,12 +420,7 @@ class _sell_gold_nowState extends State<sell_gold_now> {
                         SizedBox(height: size.height * 0.05),
                         GestureDetector(
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => confirmation_receipt_for_sell_gold_now(),
-                              ),
-                            );
+                            sellGold();
                           },
                           child: Container(
                             width: double.infinity,

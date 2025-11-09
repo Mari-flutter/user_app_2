@@ -28,7 +28,12 @@ class _confirm_your_bookingState extends State<confirm_your_booking> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        Navigator.pop(context); // This will go back to the existing get_physical_gold
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => store_selection(),
+                          ),
+                        );
                       },
                       child: Image.asset(
                         'assets/images/My_Chits/back_arrow.png',
@@ -60,7 +65,7 @@ class _confirm_your_bookingState extends State<confirm_your_booking> {
                   ),
                   child: Padding(
                     padding: EdgeInsets.symmetric(
-                      horizontal: size.width * 0.03,
+                      horizontal: size.width * 0.04,
                       vertical: size.height * 0.02,
                     ),
                     child: Column(
@@ -79,7 +84,7 @@ class _confirm_your_bookingState extends State<confirm_your_booking> {
                         SizedBox(height: size.height * 0.02),
                         Padding(
                           padding: EdgeInsets.symmetric(
-                            horizontal: size.width * 0.06,
+                            horizontal: size.width * 0.04,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -258,7 +263,7 @@ class _confirm_your_bookingState extends State<confirm_your_booking> {
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    SizedBox(width: size.width * 0.01),
+                                    SizedBox(width: size.width * 0.02),
                                     Center(
                                       child: Image.asset(
                                         'assets/images/Investments/alert_2.png',
@@ -266,7 +271,7 @@ class _confirm_your_bookingState extends State<confirm_your_booking> {
                                         height: 16,
                                       ),
                                     ),
-                                    SizedBox(width: size.width * 0.01),
+                                    SizedBox(width: size.width * 0.02),
                                     Center(
                                       child: Text(
                                         'By confirming, you agree to convert 8.5g of digital gold to\nphysical gold. The amount will be deducted from your holdings\nand charges from your wallet.',

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:user_app/Investments/Gold/gold_investment_screen.dart';
+
+import '../../Receipt_Generate/sell_gold_receipt.dart';
+
 
 class confirmation_receipt_for_sell_gold_now extends StatefulWidget {
   const confirmation_receipt_for_sell_gold_now({super.key});
@@ -28,8 +32,11 @@ class _confirmation_receipt_for_sell_gold_nowState
                   children: [
                     GestureDetector(
                       onTap: () {
-                        Navigator.pop(
+                        Navigator.push(
                           context,
+                          MaterialPageRoute(
+                            builder: (context) => gold_investment(initialTab: 1),
+                          ),
                         ); // This will go back to the existing get_physical_gold
                       },
                       child: Image.asset(
@@ -69,11 +76,11 @@ class _confirmation_receipt_for_sell_gold_nowState
                       horizontal: size.width * 0.04,
                       vertical: size.height * 0.03,
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               'Foxl Chit Funds',
@@ -86,7 +93,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                               ),
                             ),
                             Text(
-                              'Official Confirmation Receipt',
+                              'Rajesh Kumar (#F02343)',
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffFFFFFF),
@@ -97,12 +104,11 @@ class _confirmation_receipt_for_sell_gold_nowState
                             ),
                           ],
                         ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            SizedBox(height: size.height * .02),
                             Text(
-                              'Rajesh Kumar (#F02343)',
+                              'Official Confirmation Receipt',
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffFFFFFF),
@@ -111,7 +117,6 @@ class _confirmation_receipt_for_sell_gold_nowState
                                 ),
                               ),
                             ),
-                            SizedBox(height: size.height * .005),
                             Text(
                               'Booking ID: #GOLD4257',
                               style: GoogleFonts.urbanist(
@@ -130,7 +135,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                 ),
                 Container(
                   width: double.infinity,
-                  height: 310,
+                  height: 315,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [Color(0xff7D5628), Color(0xffD2B075)],
@@ -144,7 +149,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                     padding: EdgeInsets.all(1),
                     child: Container(
                       width: double.infinity,
-                      height: 310,
+                      height: 315,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.only(
                           bottomRight: Radius.circular(11),
@@ -267,6 +272,8 @@ class _confirmation_receipt_for_sell_gold_nowState
                                     ),
                                     SizedBox(height: size.height * 0.015),
                                     Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Column(
                                           crossAxisAlignment:
@@ -294,10 +301,9 @@ class _confirmation_receipt_for_sell_gold_nowState
                                             ),
                                           ],
                                         ),
-                                        SizedBox(width: size.width * 0.38),
                                         Column(
                                           crossAxisAlignment:
-                                              CrossAxisAlignment.start,
+                                              CrossAxisAlignment.end,
                                           children: [
                                             Text(
                                               'Gold Details',
@@ -357,7 +363,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                         ),
                                         Column(
                                           crossAxisAlignment:
-                                              CrossAxisAlignment.start,
+                                              CrossAxisAlignment.end,
                                           children: [
                                             Text(
                                               'Store Contact',
@@ -438,14 +444,19 @@ class _confirmation_receipt_for_sell_gold_nowState
                   ],
                 ),
                 SizedBox(height: size.height * 0.03),
-                GestureDetector(
-                  onTap: () {
-                    // Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute(
-                    //     builder: (context) => confirmation_receipts(),
-                    //   ),
-                    // );
+                GestureDetector(onTap:  () async {
+                    await GoldSellReceiptPDF(context, {
+                      'bookingId': '#GOLD4257',
+                      'customerName': 'Thanish Prakash',
+                      'customerId': '#FOX65432',
+                      'contactNumber': '+91 98765 43210',
+                      'transactionDate': '11 November 2025',
+                      'collectionMethod': 'Online',
+                      'goldDetails': '10g',
+                      'bookingDate': '11 November 2025',
+                      'storeLocation': 'Malabar - Gandhipuram, Coimbatore',
+                      'storeContact': '+91 80 6789 5432',
+                    });
                   },
                   child: Container(
                     width: double.infinity,
