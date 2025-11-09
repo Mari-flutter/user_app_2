@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 // 🧩 Models
 import '../Models/Investments/Gold/CurrentGoldValue_Model.dart';
 import '../Models/My_Chits/active_chits_model.dart';
+import '../Models/My_Chits/explore_chit_model.dart';
 import '../Models/Profile/profile_model.dart';
 import '../Models/Chit_Groups/chit_groups.dart';
 
@@ -259,6 +260,39 @@ class LocalStorageManager {
     final box = Hive.box('chitBox');
     await box.delete('current_gold_value');
     print('🗑️ Gold value cache cleared');
+  }
+  // ===========================================================
+// 🔹 EXPLORE CHIT CACHE (payment history)
+// ===========================================================
+  static Future<void> saveExploreChitCache(
+      String chitId,
+      String userId,
+      List<ExploreChit> payments,
+      ) async {
+    final box = Hive.box('chitBox');
+    await box.put(
+      'explore_chit_${chitId}_$userId',
+      jsonEncode(payments.map((e) => e.toJson()).toList()),
+    );
+    print('✅ Saved explore chit cache for $chitId & user $userId');
+  }
+
+  static List<ExploreChit> getExploreChitCache(String chitId, String userId) {
+    final box = Hive.box('chitBox');
+    final jsonString = box.get('explore_chit_${chitId}_$userId');
+    if (jsonString != null) {
+      final decoded = jsonDecode(jsonString) as List;
+      return decoded
+          .map((e) => ExploreChit.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    }
+    return [];
+  }
+
+  static Future<void> clearExploreChitCache(String chitId, String userId) async {
+    final box = Hive.box('chitBox');
+    await box.delete('explore_chit_${chitId}_$userId');
+    print('🗑️ Cleared explore chit cache for $chitId');
   }
 
 

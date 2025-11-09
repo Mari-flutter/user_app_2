@@ -29,18 +29,7 @@ class _withdraw_for_chitsState extends State<withdraw_for_chits> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => explore_chit(
-                              auctionDateTime: "2025-10-06T10:00:00",
-                              totalMonths: 10,
-                              completedMonths: 3,
-                              chitValue: 200000,
-                              totalContribution: 30000,
-                            ),
-                          ),
-                        );
+                        Navigator.pop(context);
                       },
                       child: Image.asset(
                         'assets/images/My_Chits/back_arrow.png',

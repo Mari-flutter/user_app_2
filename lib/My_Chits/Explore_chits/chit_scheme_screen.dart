@@ -11,6 +11,15 @@ class chit_scheme extends StatefulWidget {
   final int completedMonths;
   final String auctionDate;
   final String auctionEndDate;
+  final int CurrentMember;
+  final int TotalMember;
+  final String ChitType;
+  final String ChitName;
+  final double OtherCharges;
+  final double Penalty;
+  final double Taxes;
+  final double Value;
+  final double Contribution;
 
   const chit_scheme({
     super.key,
@@ -18,6 +27,15 @@ class chit_scheme extends StatefulWidget {
     required this.completedMonths,
     required this.auctionDate,
     required this.auctionEndDate,
+    required this.CurrentMember,
+    required this.TotalMember,
+    required this.ChitType,
+    required this.OtherCharges,
+    required this.Penalty,
+    required this.Taxes,
+    required this.ChitName,
+    required this.Value,
+    required this.Contribution,
   });
 
   @override
@@ -80,19 +98,7 @@ class _chit_schemeState extends State<chit_scheme> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => explore_chit(
-                              auctionDateTime: "2025-10-06T10:00:00",
-
-                              totalMonths: 10,
-                              completedMonths: 3,
-                              chitValue: 200000,
-                              totalContribution: 30000,
-                            ),
-                          ),
-                        );
+                        Navigator.pop(context);
                       },
                       child: Image.asset(
                         'assets/images/My_Chits/back_arrow.png',
@@ -141,7 +147,7 @@ class _chit_schemeState extends State<chit_scheme> {
                         ),
                         SizedBox(height: size.height * 0.005),
                         Text(
-                          '₹2 Lakh Chit',
+                          '${widget.ChitName}',
                           style: GoogleFonts.urbanist(
                             textStyle: const TextStyle(
                               color: Color(0xff3A7AFF),
@@ -172,7 +178,7 @@ class _chit_schemeState extends State<chit_scheme> {
                                 ),
                                 SizedBox(height: size.height * 0.005),
                                 Text(
-                                  'Monthly',
+                                  '${widget.ChitType}',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xff3A7AFF),
@@ -199,7 +205,7 @@ class _chit_schemeState extends State<chit_scheme> {
                                 ),
                                 SizedBox(height: size.height * 0.005),
                                 Text(
-                                  '2,00,000',
+                                  '${widget.Value}',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xff3A7AFF),
@@ -234,7 +240,7 @@ class _chit_schemeState extends State<chit_scheme> {
                                 ),
                                 SizedBox(height: size.height * 0.005),
                                 Text(
-                                  '₹10,000',
+                                  '${widget.Contribution}',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xff3A7AFF),
@@ -261,7 +267,7 @@ class _chit_schemeState extends State<chit_scheme> {
                                 ),
                                 SizedBox(height: size.height * 0.005),
                                 Text(
-                                  '20 Months',
+                                  '${widget.totalMonths}',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xff3A7AFF),
@@ -295,7 +301,7 @@ class _chit_schemeState extends State<chit_scheme> {
                                 ),
                                 SizedBox(height: size.height * 0.005),
                                 Text(
-                                  '20 Members',
+                                  '${widget.TotalMember}',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xff3A7AFF),
@@ -321,7 +327,7 @@ class _chit_schemeState extends State<chit_scheme> {
                                 ),
                                 SizedBox(height: size.height * 0.005),
                                 Text(
-                                  '8 Members Joined',
+                                  '${widget.CurrentMember}',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xff3A7AFF),
@@ -627,7 +633,7 @@ class _chit_schemeState extends State<chit_scheme> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Foreman Commission',
+                              'Other Charges',
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffDDDDDD),
@@ -637,7 +643,7 @@ class _chit_schemeState extends State<chit_scheme> {
                               ),
                             ),
                             Text(
-                              '₹500/month',
+                              '${widget.OtherCharges}',
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffDDDDDD),
@@ -653,7 +659,7 @@ class _chit_schemeState extends State<chit_scheme> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Discount Benefit',
+                              'Penalty',
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffDDDDDD),
@@ -663,7 +669,7 @@ class _chit_schemeState extends State<chit_scheme> {
                               ),
                             ),
                             Text(
-                              '₹500',
+                              '${widget.Penalty}',
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffDDDDDD),
@@ -689,7 +695,7 @@ class _chit_schemeState extends State<chit_scheme> {
                               ),
                             ),
                             Text(
-                              '₹500',
+                              '${widget.Taxes}',
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffDDDDDD),

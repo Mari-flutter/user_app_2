@@ -485,11 +485,14 @@ class _profileState extends State<profile> {
                             crossAxisCount: 2,
                             crossAxisSpacing: 10,
                             mainAxisSpacing: 10,
-                            childAspectRatio: 3.5, // Adjust to make boxes more rectangular
+                            childAspectRatio: 3.5, // makes height smaller
                           ),
                           itemBuilder: (context, index) {
                             final doc = _documents[index];
-                            final bool isVerified = (doc.verifiedAt != null && doc.verifiedAt!.isNotEmpty);
+                            final bool hasFile =
+                                doc.documentPath != null && doc.documentPath!.isNotEmpty;
+                            final bool isVerified =
+                                doc.verifiedAt != null && doc.verifiedAt!.isNotEmpty;
 
                             return Container(
                               decoration: BoxDecoration(
@@ -497,53 +500,66 @@ class _profileState extends State<profile> {
                                 borderRadius: BorderRadius.circular(11),
                                 color: Colors.black,
                               ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: SupportText(
-                                        text: doc.documentType,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: appclr.profile_clr2,
-                                        fontType: FontType.urbanist,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  // Document Type Name
+                                  Expanded(
+                                    child: SupportText(
+                                      text: doc.documentType,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: appclr.profile_clr2,
+                                      fontType: FontType.urbanist,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
+                                  ),
 
-                                    // Right-side action icons
-                                    Row(
-                                      children: [
-                                        // ✅ Show green tick if verified
-                                        if (isVerified)
-                                          const Icon(
-                                            Icons.check_circle,
-                                            color: Colors.greenAccent,
-                                            size: 18,
-                                          ),
+                                  // Icons (✅ and add/view)
+                                  Row(
+                                    children: [
+                                      // ✅ Show verified tick
+                                      if (isVerified)
+                                        const Icon(
+                                          Icons.check_circle,
+                                          color: Colors.greenAccent,
+                                          size: 16,
+                                        ),
 
-                                        // 📎 Upload / View icon
-                                        GestureDetector(
-                                          onTap: () {Navigator.push(context, MaterialPageRoute(builder: (context)=>attach_file()));},
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(left: 6),
-                                            child: Image.asset(
-                                              'assets/images/Live_Auction/add_document.png',
-                                              width: 20,
-                                              height: 20,
+                                      // 🧾 Show view icon if document exists, else add icon
+                                      GestureDetector(
+                                        onTap: hasFile
+                                            ? () => _viewFile(doc)
+                                            : () {
+                                         Navigator.push(context,MaterialPageRoute(builder: (context)=>attach_file()));
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                "Add document for ${doc.documentType}",
+                                              ),
                                             ),
+                                          );
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(left: 6),
+                                          child: Image.asset(
+                                            hasFile
+                                                ? 'assets/images/Live_Auction/view_document.png'
+                                                : 'assets/images/Live_Auction/add_document.png',
+                                            width: 20,
+                                            height: 20,
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             );
                           },
                         )
+
                       ],
                     ),
                   ),

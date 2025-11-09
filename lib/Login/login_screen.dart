@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:user_app/Bottom_Navbar/bottom_navigation_bar.dart';
 
@@ -209,7 +210,23 @@ class _loginState extends State<login> {
     _otpController.dispose();
     super.dispose();
   }
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    serverClientId: '634781175675-9sr37dl784o2r8dckmd2ie9hnrsvm5e4.apps.googleusercontent.com', // 👈 Web Client ID
+  );
+  Future<void> handleGoogleSignIn() async {
+    try {
+      final GoogleSignInAccount? account = await _googleSignIn.signIn();
+      if (account == null) return;
 
+      final GoogleSignInAuthentication auth = await account.authentication;
+      final idToken = auth.idToken;
+
+      print('ID Token: $idToken');
+    } catch (e) {
+      print('Google sign-in error:$e');
+    }
+  }
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -374,6 +391,7 @@ class _loginState extends State<login> {
 
                 // 🔹 Continue with Google Button
                 GestureDetector(
+                  onTap: handleGoogleSignIn,
                   child: Container(
                     width: double.infinity,
                     height: 51,

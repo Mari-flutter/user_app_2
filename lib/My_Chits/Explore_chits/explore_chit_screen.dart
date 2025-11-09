@@ -1,29 +1,53 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hive/hive.dart';
+import 'package:http/http.dart' as http;
 import 'package:user_app/My_Chits/Explore_chits/auction_result_screen.dart';
 import 'package:user_app/My_Chits/Explore_chits/chit_scheme_screen.dart';
 import 'package:user_app/My_Chits/Explore_chits/terms_and_condition_screen.dart';
 import 'package:user_app/My_Chits/Explore_chits/withdraw_for_chits_screen.dart';
 import 'package:user_app/My_Chits/my_chits.dart';
 import 'package:user_app/My_Chits/Explore_chits/receipts_screen.dart';
+import 'package:user_app/Services/secure_storage.dart';
 import 'dart:async';
+
+import '../../Models/My_Chits/explore_chit_model.dart';
 
 class explore_chit extends StatefulWidget {
   final String auctionDateTime;
-  final int totalMonths;
   final int completedMonths;
-  final int chitValue;
-  final int totalContribution;
+  final double chitValue;
+  final double totalContribution;
+  final String chitId;
+  final int timePeriod;
+  final double otherCharges;
+  final double penalty;
+  final double taxes;
+  final String chitName;
+  final String chitType;
+  final int TotalMembers;
+  final int CurrentMember;
 
   const explore_chit({
     super.key,
-    required this.totalMonths,
+    required this.chitId,
     required this.completedMonths,
     required this.chitValue,
     required this.totalContribution,
     required this.auctionDateTime,
+    required this.timePeriod,
+    required this.otherCharges,
+    required this.penalty,
+    required this.taxes,
+    required this.chitName,
+    required this.chitType,
+    required this.TotalMembers,
+    required this.CurrentMember,
   });
+
 
   @override
   State<explore_chit> createState() => _explore_chitState();
@@ -46,10 +70,19 @@ class _explore_chitState extends State<explore_chit> {
   ];
   late final List<Widget> chit_scheme_to_TC_pages = [
     chit_scheme(
-      totalMonths: 20,
-      completedMonths: 10,
+      totalMonths: widget.timePeriod,
+      completedMonths: exploreChitList.length,
       auctionDate: "2025-10-04",
       auctionEndDate: "2025-10-04",
+      CurrentMember:widget.CurrentMember,
+      TotalMember:widget.TotalMembers,
+      ChitType:widget.chitType,
+      ChitName:widget.chitName,
+      OtherCharges:widget.otherCharges,
+      Penalty:widget.penalty,
+      Taxes:widget.taxes,
+      Value:widget.chitValue,
+      Contribution:widget.totalContribution,
     ),
     auction_result(),
     receipts(),
@@ -61,41 +94,124 @@ class _explore_chitState extends State<explore_chit> {
   late DateTime auctionTime;
   bool isAuctionStarted = false;
   Timer? _timer;
+  List<ExploreChit> exploreChitList = [];
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    auctionTime = DateTime.parse(widget.auctionDateTime);
-    _checkAuctionStatus();
-    // Periodically check auction status every second
-    _timer = Timer.periodic(Duration(seconds: 1), (_) {
-      _checkAuctionStatus();
-    });
+    _loadExploreChitData();
   }
 
-  void _checkAuctionStatus() {
-    final now = DateTime.now();
-    final started = now.isAfter(auctionTime);
-    if (started != isAuctionStarted) {
+  Future<void> _loadExploreChitData() async {
+    final userId = await SecureStorageService.getUserId();
+    final cacheKey = 'explore_chit_${widget.chitId}_$userId';
+    final box = Hive.box('chitBox');
+
+    // 🔹 1. Load cache immediately (no wait)
+    final cachedData = box.get(cacheKey);
+    if (cachedData != null) {
+      final decoded = jsonDecode(cachedData) as List;
+      final cachedList = decoded
+          .map((e) => ExploreChit.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
       setState(() {
-        isAuctionStarted = started;
+        exploreChitList = cachedList;
+        isLoading = false;
       });
+      print('📦 Loaded ${cachedList.length} explore chit records from cache');
     }
-  }
 
-  @override
-  void dispose() {
-    _timer?.cancel(); // Cancel timer to prevent memory leaks
-    super.dispose();
+    // 🔹 2. Fetch latest data from API in background
+    try {
+      final url = Uri.parse(
+          'https://foxlchits.com/api/ChitPayment/payment-history/${widget.chitId}/$userId');
+      print('🌍 Fetching explore chit data: $url');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final freshList =
+        data.map((e) => ExploreChit.fromJson(e)).toList();
+
+        if (freshList.isNotEmpty) {
+          await box.put(
+            cacheKey,
+            jsonEncode(freshList.map((e) => e.toJson()).toList()),
+          );
+          print('✅ Cached ${freshList.length} explore chit records');
+        }
+
+        if (mounted) {
+          setState(() => exploreChitList = freshList);
+        }
+      } else {
+        print('⚠️ API Error: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error fetching explore chit data: $e');
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
   }
 
   final chit_month = 20;
   final completed_chits = 6;
+  double get totalPaid {
+    return exploreChitList.fold(0.0, (sum, e) => sum + e.amountPaid);
+  }
+  String _formatDate(DateTime date) {
+    // Example: 03rd Nov 25
+    const suffixes = ["th", "st", "nd", "rd"];
+    int day = date.day;
+    String suffix = "th";
+
+    if (day % 10 == 1 && day != 11) suffix = "st";
+    else if (day % 10 == 2 && day != 12) suffix = "nd";
+    else if (day % 10 == 3 && day != 13) suffix = "rd";
+
+    String monthName = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ][date.month - 1];
+
+    String shortYear = date.year.toString().substring(2);
+
+    return "${day.toString().padLeft(2, '0')}$suffix $monthName $shortYear";
+  }
+
 
   @override
   Widget build(BuildContext context) {
+    // Find the first unpaid chit (i.e., next payment due)
+    final ExploreChit? nextDue = exploreChitList.firstWhere(
+          (chit) => chit.paid == false,
+      orElse: () => exploreChitList.last, // fallback if all are paid
+    );
+
     Size size = MediaQuery.of(context).size;
-    double progress = widget.completedMonths / widget.totalMonths;
+    double progress = exploreChitList.isNotEmpty
+        ? exploreChitList.length / widget.timePeriod
+        : 0;
+    if (isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+    }
+    if (exploreChitList.isEmpty) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Text(
+            'No explore chit data available.',
+            style: TextStyle(color: Colors.white, fontSize: 14),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Color(0xff000000),
@@ -172,7 +288,7 @@ class _explore_chitState extends State<explore_chit> {
                               ),
                             ),
                             Text(
-                              '${widget.totalMonths} Months',
+                              '${widget.timePeriod} Months',
                               style: GoogleFonts.urbanist(
                                 color: Color(0xffFFFFFF),
                                 fontSize: 13,
@@ -183,7 +299,7 @@ class _explore_chitState extends State<explore_chit> {
                         ),
                         SizedBox(height: size.height * 0.015),
                         Text(
-                          'Total Contribution till now : ₹${widget.totalContribution.toString()}/-',
+                          'Total Contribution till now : ₹${totalPaid.toStringAsFixed(2)}/-',
                           style: GoogleFonts.urbanist(
                             color: Color(0xffDDDDDD),
                             fontSize: 13,
@@ -203,7 +319,7 @@ class _explore_chitState extends State<explore_chit> {
                               ),
                             ),
                             Text(
-                              '${widget.completedMonths} of ${widget.totalMonths} months completed',
+                              '${exploreChitList.length} of ${widget.timePeriod} months completed',
                               style: GoogleFonts.urbanist(
                                 color: Color(0xffDBDBDB),
                                 fontSize: 13,
@@ -309,83 +425,6 @@ class _explore_chitState extends State<explore_chit> {
                     },
                   ),
                 ),
-                Container(
-                  width: double.infinity,
-                  height: 109,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(25),
-                    gradient: LinearGradient(
-                      colors: [Color(0xff4770CB), Color(0xff000000)],
-                    ),
-                  ),
-                  child: Container(
-                    margin: EdgeInsets.symmetric(
-                      horizontal: size.width * 0.002,
-                      vertical: size.height * 0.001,
-                    ),
-                    width: double.infinity,
-                    height: 109,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(25),
-                      color: Color(0xff000000),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: size.width * 0.04,
-                        vertical: size.height * 0.025,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '07 days for Upcoming Auction',
-                            style: GoogleFonts.urbanist(
-                              color: Color(0xffFFFFFF),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(height: size.height * 0.015),
-                          Align(
-                            alignment: Alignment.bottomRight,
-                            child: GestureDetector(
-                              onTap: isAuctionStarted
-                                  ? () {
-                                      // Perform enroll action
-                                    }
-                                  : null,
-                              child: Container(
-                                width: 70,
-                                height: 25,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(11),
-                                  color: isAuctionStarted
-                                      ? const Color(0xff3F60A9) // active blue
-                                      : const Color(
-                                          0xff232D42,
-                                        ), // inactive grey
-                                ),
-
-                                child: Center(
-                                  child: Text(
-                                    'Enroll',
-                                    style: GoogleFonts.urbanist(
-                                      color: isAuctionStarted
-                                          ? Color(0xffFFFFFF)
-                                          : Color(0xff4A4A4A),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
                 SizedBox(height: size.height * 0.03),
                 Container(
                   width: double.infinity,
@@ -430,7 +469,9 @@ class _explore_chitState extends State<explore_chit> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                '₹10,000/-',
+                                nextDue != null
+                                    ? '₹${nextDue.howMuchToPay.toStringAsFixed(0)}/-'
+                                    : '₹0/-',
                                 style: GoogleFonts.urbanist(
                                   color: Color(0xffFFFFFF),
                                   fontSize: 20,
@@ -438,7 +479,20 @@ class _explore_chitState extends State<explore_chit> {
                                 ),
                               ),
                               GestureDetector(
-                                onTap: () {},
+                                onTap: () async {
+                                  // simulate payment process
+                                  if (nextDue != null && nextDue.howMuchToPay > 0) {
+                                    // ✅ After successful payment, set to 0
+                                    await _loadExploreChitData(); // 🔁 Refresh API to get updated status
+                                    // You can later call your POST API here for payment confirmation.
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Payment Successful!'),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  }
+                                },
                                 child: Container(
                                   width: 87,
                                   height: 25,
@@ -449,7 +503,9 @@ class _explore_chitState extends State<explore_chit> {
 
                                   child: Center(
                                     child: Text(
-                                      isPay_due ? 'No Due' : 'Pay Due',
+                                      nextDue == null
+                                          ? 'Loading...'
+                                          : (nextDue.howMuchToPay == 0 ? 'No Due' : 'Pay Due'),
                                       style: GoogleFonts.urbanist(
                                         color: Color(0xffFFFFFF),
                                         fontSize: 14,
@@ -496,10 +552,22 @@ class _explore_chitState extends State<explore_chit> {
                     mainAxisSpacing: 10, // Vertical spacing between items
                     childAspectRatio: 1, // Width / Height ratio
                   ),
-                  itemCount: chit_month,
+                  itemCount: widget.timePeriod,
                   itemBuilder: (BuildContext, index) {
+                    String _ordinalSuffix(int number) {
+                      if (number % 10 == 1 && number != 11) return "${number}st";
+                      if (number % 10 == 2 && number != 12) return "${number}nd";
+                      if (number % 10 == 3 && number != 13) return "${number}rd";
+                      return "${number}th";
+                    }
+
                     final isCompleted =
-                        index < completed_chits; // completed chits
+                        index < widget.timePeriod; // completed chits
+                    ExploreChit? item =
+                    index < exploreChitList.length ? exploreChitList[index] : null;
+                    String paymentDate = item != null
+                        ? _formatDate(item.paymentDate)
+                        : 'Upcoming'; // fallback for future months
                     return Column(
                       children: [
                         Container(
@@ -523,7 +591,7 @@ class _explore_chitState extends State<explore_chit> {
                           ),
                           child: Center(
                             child: Text(
-                              '03rd Nov 25',
+                              paymentDate,
                               style: GoogleFonts.urbanist(
                                 color: isCompleted
                                     ? Color(0xffFFFFFF)
@@ -558,20 +626,21 @@ class _explore_chitState extends State<explore_chit> {
                               SizedBox(height: size.height * 0.025),
                               if (isCompleted)
                                 Text(
-                                  '₹10,000/-',
+                                  '₹${(item?.amountPaid ?? 0).toStringAsFixed(2)}',
                                   style: GoogleFonts.urbanist(
-                                    color: Color(0xffFFFFFF),
+                                    color: (item?.amountPaid ?? 0) > 0
+                                        ? const Color(0xffFFFFFF)
+                                        : const Color(0xffFFFFFF).withOpacity(0.3),
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               SizedBox(
-                                height: isCompleted
-                                    ? size.height * 0.01
-                                    : size.height * 0.035,
+                                height: size.height * 0.01
+
                               ),
                               Text(
-                                'On first auction',
+                                'On ${_ordinalSuffix(index + 1)} Auction',
                                 style: GoogleFonts.urbanist(
                                   color: isCompleted
                                       ? Color(0xff515151).withOpacity(1)

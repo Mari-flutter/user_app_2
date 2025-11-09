@@ -364,8 +364,8 @@ class _ActiveChitsPageState extends State<ActiveChitsPage> {
                           "Mon.Contribution : ₹${chit.contribution.toStringAsFixed(0)}",
                         ),
                         _buildInfoRow(
-                          "Total Members : ${chit.members.length}",
-                          "Joined : ${chit.currentMemberCount}/${chit.members.length}",
+                          "Total Members : ${chit.totalMember}",
+                          "Joined : ${chit.currentMemberCount}/${chit.totalMember}",
                         ),
                         _buildInfoRow(
                           "Duration : ${chit.timePeriod} months",
@@ -380,11 +380,19 @@ class _ActiveChitsPageState extends State<ActiveChitsPage> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => explore_chit(
-                                    totalMonths: 10,
                                     completedMonths: 3,
-                                    chitValue: 200000,
-                                    totalContribution: 30000,
+                                    chitValue: chit.value,
+                                    totalContribution:chit.contribution,
                                     auctionDateTime: "2025-10-06T10:00:00",
+                                    timePeriod: chit.timePeriod,        // 🔹 from ActiveChit model
+                                    otherCharges: chit.otherCharges ?? 0.0, // 🔹 optional safe check
+                                    penalty: chit.penalty ?? 0.0,
+                                    taxes: chit.taxes ?? 0.0,
+                                    chitId: chit.id,
+                                    chitName : chit.chitsName,
+                                    chitType : chit.chitsType,
+                                    TotalMembers : chit.totalMember,
+                                    CurrentMember : chit.currentMemberCount,
                                   ),
                                 ),
                               );

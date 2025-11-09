@@ -503,19 +503,7 @@ class _homeState extends State<home> with AutomaticKeepAliveClientMixin {
                                             ),
                                           ),
                                         ),
-                                        if (auction_status == true) ...[
-                                          SizedBox(height: size.height * 0.01),
-                                          Text(
-                                            'Action Starts in 05:00',
-                                            style: GoogleFonts.urbanist(
-                                              textStyle: const TextStyle(
-                                                color: Color(0xff1762FC),
-                                                fontSize: 8,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
+                                        SizedBox(height: size.height * 0.01),
                                         Padding(
                                           padding: EdgeInsets.only(
                                             left: size.width * 0.2,
