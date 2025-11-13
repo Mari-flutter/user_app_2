@@ -1,5 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as storage;
+import 'package:http/http.dart' as http;
 import 'package:user_app/Investments/Gold/gold_investment_screen.dart';
 import 'package:user_app/Investments/Real_Estate/real_estate_investment_screen.dart';
 import 'package:user_app/Investments/Receipts/investments_receipts_overall_screen.dart';
@@ -20,13 +25,59 @@ class investment extends StatefulWidget {
 class _investmentState extends State<investment> {
   GoldHoldings? goldHoldings;
   CurrentGoldValue? _goldValue;
+  double totalInvested = 0.0;
+  double totalRoiEarned = 0.0;
+  double annualRoiPercentage = 0.0;
+  int totalinvestments = 0;
   bool _loading = true;
+  String? profileId;
+  final _storage = const FlutterSecureStorage();
 
   @override
   void initState() {
     super.initState();
     _loadGoldValue();
     _loadGoldHoldings();
+    fetchInvestmentSummary();
+  }
+
+  Future<void> fetchInvestmentSummary() async {
+    profileId = await _storage.read(key: 'profileId');
+    // 🔑 If profile ID is missing, we cannot proceed.
+    if (profileId == null || profileId!.isEmpty) {
+      print("❌ Error: Profile ID not found in secure storage.");
+      return;
+    }
+
+    // 🔑 USE THE DYNAMICALLY RETRIEVED PROFILE ID
+    final String apiUrl = "https://foxlchits.com/api/JoinToREInvestment/by-profile/$profileId";
+
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+
+      print("⭐ Summary API Status Code: ${response.statusCode}");
+      print("⭐ Summary API Response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+
+        setState(() {
+          totalInvested = (data['totalAddedAmount'] as num?)?.toDouble() ?? 0.0;
+          totalRoiEarned = (data['roiSum'] as num?)?.toDouble() ?? 0.0;
+          totalinvestments = (data["joinedCount"] as num?)?.toInt() ?? 0;
+
+          if (totalInvested != 0) {
+            annualRoiPercentage = (totalRoiEarned / totalInvested) * 100;
+          } else {
+            annualRoiPercentage = 0.0;
+          }
+        });
+      } else {
+        print("❌ Summary Error: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("⚠ Exception (Summary): $e");
+    }
   }
 
   Future<void> _loadGoldHoldings() async {
@@ -51,31 +102,23 @@ class _investmentState extends State<investment> {
     }
   }
 
+// In _investmentState in investment.dart
 
   Future<void> _loadGoldValue() async {
     // 1️⃣ Load cached value first
-    final cachedValue = await GoldService.getCachedGoldValue();
-    if (cachedValue != null) {
-      print('💾 Showing cached gold value: ₹${cachedValue.goldValue}');
-      setState(() {
-        _goldValue = cachedValue;
-        _loading = false;
-      });
-    } else {
-      print('⚠️ No cached value, showing loader...');
-      setState(() {
-        _loading = true;
-      });
-    }
+    // ... (Uses the cached value, which is now the latest from the last fetch)
 
     // 2️⃣ Fetch updated gold value in background
     try {
       print('🔹 Fetching latest gold price...');
+
+      // 🔑 This call now returns the LAST item of the list, thanks to the GoldService update
       final latestValue = await GoldService.fetchAndCacheGoldValue();
+
       if (!mounted) return;
       if (latestValue != null) {
         setState(() {
-          _goldValue = latestValue;
+          _goldValue = latestValue; // _goldValue is set to the LAST item
           _loading = false;
         });
         print('🌐 Updated to latest gold value: ₹${latestValue.goldValue}');
@@ -83,6 +126,12 @@ class _investmentState extends State<investment> {
     } catch (e) {
       print('❌ Error fetching gold value: $e');
     }
+  }
+  String formatCurrency(double amount) {
+    return amount.toStringAsFixed(0).replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]},',
+    );
   }
 
   @override
@@ -410,7 +459,7 @@ class _investmentState extends State<investment> {
                                   ),
                                 ),
                                 Text(
-                                  '${goldHoldings?.userGold.toStringAsFixed(2) ?? '--'} grams',
+                                  '${goldHoldings?.userGold.toStringAsFixed(2) ?? '--'} g',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xffFFFFFF),
@@ -485,7 +534,7 @@ class _investmentState extends State<investment> {
                                   ),
                                 ),
                                 Text(
-                                  '₹2,67,500',
+                                  '₹${formatCurrency(totalInvested)}',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xffFFFFFF),
@@ -495,7 +544,7 @@ class _investmentState extends State<investment> {
                                   ),
                                 ),
                                 Text(
-                                  '+10% Annual ROI',
+                                  '${annualRoiPercentage.toStringAsFixed(2)}% Annual ROI',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xffFFFFFF),
@@ -520,7 +569,7 @@ class _investmentState extends State<investment> {
                                   ),
                                 ),
                                 Text(
-                                  '₹22,291',
+                                  '₹${formatCurrency(totalRoiEarned)}',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xffFFFFFF),

@@ -1,25 +1,94 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 
-import 'explore_chit_screen.dart';
+import '../../Helper/Local_storage_manager.dart';
+import '../../Models/My_Chits/past_auction_result_model.dart';
 
 class auction_result extends StatefulWidget {
-  const auction_result({super.key});
+  final String chitId;
+  final double chitValue;
+  final String chitName;
+
+  const auction_result({super.key, required this.chitId,
+    required this.chitName,required this.chitValue,
+});
 
   @override
   State<auction_result> createState() => _auction_resultState();
 }
 
 class _auction_resultState extends State<auction_result> {
-  final List<String> winners = ['Rajesh','Dinesh','Mari'];
+  List<PastAuctionResultModel> pastResults = [];
+  bool isLoading = true;
+  @override
+  void initState() {
+    super.initState();
+    _loadPastAuctionResults();
+  }
+
+  Future<void> _loadPastAuctionResults() async {
+    // 🔹 Try loading from cache first
+    final cached = LocalStorageManager.getPastAuctionResults();
+    if (cached.isNotEmpty) {
+      setState(() {
+        pastResults = cached;
+        isLoading = false;
+      });
+      print('📦 Loaded from LocalStorageManager cache');
+    }
+
+    // 🔹 Fetch fresh data from API
+    try {
+      final response = await http.get(
+        Uri.parse(
+          "https://foxlchits.com/api/AddUsertoachit/whotakesachit/${widget.chitId}/Members",
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final fetched = data
+            .map((e) => PastAuctionResultModel.fromJson(e))
+            .toList();
+
+        setState(() {
+          pastResults = fetched;
+          isLoading = false;
+        });
+
+        // ✅ Save in Hive using LocalStorageManager
+        await LocalStorageManager.savePastAuctionResults(fetched);
+      } else {
+        print('❌ API failed: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('⚠️ Error fetching API: $e');
+      setState(() => isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
     return Scaffold(
       backgroundColor: Color(0xff000000),
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: isLoading
+            ? const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        )
+            : pastResults.isEmpty
+            ? const Center(
+          child: Text(
+            'No Past Auction Results Found',
+            style: TextStyle(color: Colors.white),
+          ),
+        )
+            : SingleChildScrollView(
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
             child: Column(
@@ -53,7 +122,8 @@ class _auction_resultState extends State<auction_result> {
                   ],
                 ),
                 SizedBox(height: size.height * 0.04),
-                ...List.generate(winners.length, (index) {
+                ...List.generate(pastResults.length, (index) {
+                  final result = pastResults[index];
                   return Padding(
                     padding: EdgeInsets.only(bottom: size.height * 0.02),
                     child: Container(
@@ -78,7 +148,7 @@ class _auction_resultState extends State<auction_result> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Auction #1',
+                                      'Auction #${index + 1}',
                                       style: GoogleFonts.urbanist(
                                         textStyle: const TextStyle(
                                           color: Color(0xff3A7AFF),
@@ -88,7 +158,8 @@ class _auction_resultState extends State<auction_result> {
                                       ),
                                     ),
                                     Text(
-                                      '05-11-2025 at 10:00 AM',
+                                      '${result.chitTakenDate.toLocal()}'
+                                          .split('.')[0],
                                       style: GoogleFonts.urbanist(
                                         textStyle: const TextStyle(
                                           color: Color(0xffDDDDDD),
@@ -100,7 +171,7 @@ class _auction_resultState extends State<auction_result> {
                                   ],
                                 ),
                                 Text(
-                                  '₹2 Lakh Chit',
+                                  '${widget.chitName}',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xffDDDDDD),
@@ -147,7 +218,7 @@ class _auction_resultState extends State<auction_result> {
                                     Align(
                                       alignment: Alignment.centerLeft,
                                       child: Text(
-                                        '${winners[index]} (#fu02537)',
+                                        '${result.name} (${result.userID})',
                                         style: GoogleFonts.urbanist(
                                           textStyle: const TextStyle(
                                             color: Color(0xffE2E2E2),
@@ -179,7 +250,7 @@ class _auction_resultState extends State<auction_result> {
                                       ),
                                     ),
                                     Text(
-                                      '₹15,000',
+                                      '₹${result.amountTaken.toStringAsFixed(0)}',
                                       style: GoogleFonts.urbanist(
                                         textStyle: const TextStyle(
                                           color: Color(0xff3A7AFF),
@@ -204,8 +275,8 @@ class _auction_resultState extends State<auction_result> {
                                       ),
                                     ),
                                     Text(
-                                      '₹1,85,000',
-                                      style: GoogleFonts.urbanist(
+                                        '₹${(widget.chitValue-result.amountTaken).toStringAsFixed(0)}',
+                                        style: GoogleFonts.urbanist(
                                         textStyle: const TextStyle(
                                           color: Color(0xff3A7AFF),
                                           fontSize: 16,
@@ -218,28 +289,22 @@ class _auction_resultState extends State<auction_result> {
                               ],
                             ),
                             SizedBox(height: size.height * 0.02),
-                            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,children: [
-                              Text(
-                                'Winner Selected by Auction',
-                                style: GoogleFonts.urbanist(
-                                  textStyle: const TextStyle(
-                                    color: Color(0xff6C6C6C),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
+                            Center(
+                              child:Center(
+                                child: Text(
+                                  result.bidHistories.isNotEmpty
+                                      ? 'Winner Selected by Auction'
+                                      : 'Winner Selected by Draw',
+                                  style: GoogleFonts.urbanist(
+                                    textStyle: const TextStyle(
+                                      color: Color(0xff6C6C6C),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
                               ),
-                              Text(
-                                'Participants:08/10',
-                                style: GoogleFonts.urbanist(
-                                  textStyle: const TextStyle(
-                                    color: Color(0xff6C6C6C),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],)
+                            ),
                           ],
                         ),
                       ),

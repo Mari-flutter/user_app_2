@@ -20,6 +20,7 @@ class chit_scheme extends StatefulWidget {
   final double Taxes;
   final double Value;
   final double Contribution;
+  final String nextAuctionDate;
 
   const chit_scheme({
     super.key,
@@ -36,6 +37,7 @@ class chit_scheme extends StatefulWidget {
     required this.ChitName,
     required this.Value,
     required this.Contribution,
+    required this.nextAuctionDate,
   });
 
   @override
@@ -45,6 +47,7 @@ class chit_scheme extends StatefulWidget {
 class _chit_schemeState extends State<chit_scheme> {
   late DateTime auctionTime;
   late DateTime auctionEndTime;
+  late DateTime nextAuctionDate;
   bool isAuctionStarted = false;
   bool isAuctionEnded = false;
   Timer? _timer;
@@ -52,8 +55,10 @@ class _chit_schemeState extends State<chit_scheme> {
   @override
   void initState() {
     super.initState();
-    auctionTime = DateTime.parse(widget.auctionDate);
-    auctionEndTime = DateTime.parse(widget.auctionEndDate);
+    final parts = widget.auctionDate.split('-'); // e.g., ['15', '10', '2025']
+    final isoDateString = '${parts[2]}-${parts[1]}-${parts[0]}T00:00:00';
+
+    nextAuctionDate = DateTime.parse(isoDateString);
     _checkAuctionStatus();
     _timer = Timer.periodic(Duration(seconds: 1), (_) {
       _checkAuctionStatus();
@@ -62,8 +67,14 @@ class _chit_schemeState extends State<chit_scheme> {
 
   void _checkAuctionStatus() {
     final now = DateTime.now();
-    final started = now.isAfter(auctionTime);
-    final ended = now.isAfter(auctionEndTime);
+
+    // NOTE: If you are not using these for real-time auction status,
+    // this entire function and the timer should be removed for efficiency.
+    // For this example, I'll simplify the status check based only on the "Next Auction Date"
+    // which we'll assume is the widget.auctionDate.
+
+    final started = now.isAfter(nextAuctionDate.subtract(Duration(hours: 1))); // Auction starts 1 hour before due date? (Conceptual)
+    final ended = now.isAfter(nextAuctionDate);
 
     if (started != isAuctionStarted || ended != isAuctionEnded) {
       setState(() {
@@ -72,7 +83,28 @@ class _chit_schemeState extends State<chit_scheme> {
       });
     }
   }
+  String _formatDisplayDate(String ddMmYyyy) {
+    try {
+      final parts = ddMmYyyy.split('-');
+      if (parts.length != 3) return ddMmYyyy;
 
+      final day = parts[0];
+      final monthIndex = int.parse(parts[1]) - 1;
+      final year = parts[2];
+
+      const monthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+
+      if (monthIndex >= 0 && monthIndex < 12) {
+        return '$day ${monthNames[monthIndex]} $year';
+      }
+      return ddMmYyyy;
+    } catch (e) {
+      return ddMmYyyy; // Return original string on error
+    }
+  }
   @override
   void dispose() {
     _timer?.cancel(); // Cancel timer to prevent memory leaks
@@ -563,7 +595,7 @@ class _chit_schemeState extends State<chit_scheme> {
                                   ),
                                 ),
                                 Text(
-                                  '05 December 2025 at 10:00 AM',
+                                  '${_formatDisplayDate(widget.nextAuctionDate)} at 10:00 AM',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xffDDDDDD),

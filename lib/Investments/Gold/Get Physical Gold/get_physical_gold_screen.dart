@@ -1,43 +1,58 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart' as http;
-import 'package:user_app/Investments/Gold/confirmation_receipt_for_sell_gold_now.dart';
+import 'package:user_app/Investments/Gold/Get%20Physical%20Gold/store_selection_screen.dart';
 import 'package:user_app/Investments/Gold/gold_investment_screen.dart';
 
-import '../../Models/Investments/Gold/CurrentGoldValue_Model.dart';
-import '../../Models/Investments/Gold/sell_gold_model.dart';
-import '../../Models/Investments/Gold/user_hold_gold_model.dart';
-import '../../Services/Gold_holdings.dart';
-import '../../Services/Gold_price.dart';
-import '../../Services/secure_storage.dart';
+import '../../../Models/Investments/Gold/CurrentGoldValue_Model.dart';
+import '../../../Models/Investments/Gold/user_hold_gold_model.dart';
+import '../../../Services/Gold_holdings.dart';
+import '../../../Services/Gold_price.dart';
 
-class sell_gold_now extends StatefulWidget {
-  final double enteredGrams;
-  final double estimateAmount;
+class get_physical_gold extends StatefulWidget {
   final VoidCallback? onBackToGold;
 
-  const sell_gold_now({
-    super.key,
-    required this.enteredGrams,
-    required this.estimateAmount,
-    this.onBackToGold,
-  });
+  const get_physical_gold({super.key, this.onBackToGold});
 
   @override
-  State<sell_gold_now> createState() => _sell_gold_nowState();
+  State<get_physical_gold> createState() => _get_physical_goldState();
 }
 
-class _sell_gold_nowState extends State<sell_gold_now> {
-  CurrentGoldValue? _goldValue;
+class _get_physical_goldState extends State<get_physical_gold> {
   GoldHoldings? goldHoldings;
+  CurrentGoldValue? _goldValue;
   bool _loading = true;
+  TextEditingController _controller = TextEditingController();
+  double approxAmount = 0.0;
+  @override
   @override
   void initState() {
     super.initState();
+    // Call the API data loading methods
     _loadGoldValue();
     _loadGoldHoldings();
+
+    // Set up the listener for the TextField
+    _controller.addListener(_calculateEstimate);
+  }
+  bool get _isInputValid {
+    final grams = double.tryParse(_controller.text) ?? 0.0;
+    // Check if grams is greater than zero
+    return grams > 0.0;
+    // You could also add a check for holdings here:
+    // return grams > 0.0 && grams <= (goldHoldings?.userGold ?? 0.0);
+  }
+  void _calculateEstimate() {
+    // 1. Get the current rate safely. If the API data hasn't loaded yet (_goldValue is null), use 0.0.
+    // The value is stored as a double in the model's 'goldValue' property.
+    double currentRate = _goldValue?.goldValue ?? 0.0;
+
+    // 2. Get the input grams safely.
+    double grams = double.tryParse(_controller.text) ?? 0.0;
+
+    // 3. Update the state with the new calculated amount.
+    setState(() {
+      approxAmount = grams * currentRate;
+    });
   }
   Future<void> _loadGoldHoldings() async {
     // Step 1️⃣ — Load cached data immediately
@@ -61,62 +76,10 @@ class _sell_gold_nowState extends State<sell_gold_now> {
     }
   }
 
-  Future<void> sellGold() async {
-    final String apiUrl = "https://foxlchits.com/api/AddYourGold/sell";
-
-    // 🧠 Retrieve userId securely
-    final userId = await SecureStorageService.getProfileId();
-
-    if (userId == null || userId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("User not logged in")),
-      );
-      return;
-    }
-
-    final double amount = double.parse(widget.estimateAmount.toStringAsFixed(0));
-
-    final sellGoldData = SellGoldModel(
-      userId: userId,
-      amount: amount,
-      type: "Sell",
-    );
-
-    try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(sellGoldData.toJson()),
-      );
-
-      if (response.statusCode == 200) {
-        final jsonResponse = jsonDecode(response.body);
-        print("✅ Sell Success: $jsonResponse");
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Gold sold successfully!")),
-        );
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => confirmation_receipt_for_sell_gold_now(),
-          ),
-        );
-      } else {
-        print("❌ Sell Failed: ${response.body}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to sell gold. Try again.")),
-        );
-      }
-    } catch (e) {
-      print("⚠️ Error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
-    }
-  }
 
   Future<void> _loadGoldValue() async {
+    // ... (Your existing loading logic) ...
+
     // 1️⃣ Load cached value first
     final cachedValue = await GoldService.getCachedGoldValue();
     if (cachedValue != null) {
@@ -124,33 +87,37 @@ class _sell_gold_nowState extends State<sell_gold_now> {
       setState(() {
         _goldValue = cachedValue;
         _loading = false;
+        _calculateEstimate(); // <--- Run calculation with cached data
       });
     } else {
-      print('⚠️ No cached value, showing loader...');
-      setState(() {
-        _loading = true;
-      });
+      // ... (Your existing loader logic) ...
     }
 
     // 2️⃣ Fetch updated gold value in background
     try {
-      print('🔹 Fetching latest gold price...');
+      // ... (Your existing fetch logic) ...
       final latestValue = await GoldService.fetchAndCacheGoldValue();
       if (!mounted) return;
       if (latestValue != null) {
         setState(() {
           _goldValue = latestValue;
           _loading = false;
+          _calculateEstimate(); // <--- Run calculation with NEW data
         });
-        print('🌐 Updated to latest gold value: ₹${latestValue.goldValue}');
+        // ... (Your existing print) ...
       }
     } catch (e) {
-      print('❌ Error fetching gold value: $e');
+      // ... (Your existing error print) ...
     }
   }
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    TextEditingController _controller = TextEditingController();
     Size size = MediaQuery.of(context).size;
     return Scaffold(
       backgroundColor: Color(0xff000000),
@@ -170,7 +137,7 @@ class _sell_gold_nowState extends State<sell_gold_now> {
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
-                                gold_investment(initialTab: 1),
+                                gold_investment(initialTab: 0),
                           ),
                         );
                       },
@@ -182,7 +149,7 @@ class _sell_gold_nowState extends State<sell_gold_now> {
                     ),
                     SizedBox(width: size.width * 0.03),
                     Text(
-                      'Sell Gold',
+                      'Get Physical Gold',
                       style: GoogleFonts.urbanist(
                         textStyle: const TextStyle(
                           color: Color(0xffFFFFFF),
@@ -335,7 +302,7 @@ class _sell_gold_nowState extends State<sell_gold_now> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Entered grams (₹)',
+                                  'Enter grams (₹)',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xffDBDBDB),
@@ -345,30 +312,44 @@ class _sell_gold_nowState extends State<sell_gold_now> {
                                   ),
                                 ),
                                 SizedBox(height: size.height * 0.01),
-                                Container(
+                                SizedBox(
                                   width: size.width * 0.41,
                                   height: 38,
-                                  decoration: BoxDecoration(
-                                    color: Color(0xff525252),
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      SizedBox(width: size.width * 0.02),
-                                      Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          widget.enteredGrams.toStringAsFixed(2),
-                                          style: GoogleFonts.urbanist(
-                                            textStyle: const TextStyle(
-                                              color: Color(0xffDBDBDB),
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                  child: TextField(
+                                    style: TextStyle(
+                                      color: Color(0xffFFFFFF),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    cursorColor: Color(0xffFFFFFF),
+                                    controller: _controller,
+                                    keyboardType: TextInputType.number,
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      // 👈 must enable to show background color
+                                      fillColor: Color(0xff2A2A2A),
+
+                                      // 👈 background color
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 10,
                                           ),
+
+                                      // 👇 Focused border (when you tap on it)
+                                      focusedBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: Color(0xff2A2A2A),
                                         ),
+                                        borderRadius: BorderRadius.circular(5),
                                       ),
-                                    ],
+                                      border: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: Color(0xff2A2A2A),
+                                        ),
+                                        borderRadius: BorderRadius.circular(5),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -400,7 +381,7 @@ class _sell_gold_nowState extends State<sell_gold_now> {
                                       Align(
                                         alignment: Alignment.centerLeft,
                                         child: Text(
-                                          '₹${widget.estimateAmount.toStringAsFixed(0)}',
+                                          '₹ ${approxAmount.toStringAsFixed(0)}',
                                           style: GoogleFonts.urbanist(
                                             textStyle: const TextStyle(
                                               color: Color(0xffDBDBDB),
@@ -420,7 +401,27 @@ class _sell_gold_nowState extends State<sell_gold_now> {
                         SizedBox(height: size.height * 0.05),
                         GestureDetector(
                           onTap: () {
-                            sellGold();
+                            // 1. VALIDATION CHECK: Only proceed if input is valid
+                            if (_isInputValid) {
+                              final grams = double.tryParse(_controller.text) ?? 0.0;
+
+                              // 2. Navigation
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => store_selection(selectedGrams: grams,EstimateValue:approxAmount),
+                                ),
+                              );
+                            } else {
+                              // Optional: Show a Snackbar error message if validation fails
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Please enter a gold amount greater than 0 grams.'),
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
                           },
                           child: Container(
                             width: double.infinity,
@@ -431,7 +432,7 @@ class _sell_gold_nowState extends State<sell_gold_now> {
                             ),
                             child: Center(
                               child: Text(
-                                'Confirm to Sell',
+                                'Continue to Store Selection >',
                                 style: GoogleFonts.urbanist(
                                   textStyle: const TextStyle(
                                     color: Color(0xff141414),

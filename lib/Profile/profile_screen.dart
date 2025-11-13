@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:user_app/Profile/kyc_verified.dart';
 import 'package:http/http.dart' as http;
 
@@ -13,6 +15,7 @@ import '../Models/Live_Auction/my_document_model.dart';
 import '../Models/Profile/profile_model.dart';
 import '../Models/Profile/profile_update_model.dart' hide Profile;
 import '../Services/secure_storage.dart';
+import 'package:path/path.dart' as path;
 
 class profile extends StatefulWidget {
   const profile({super.key});
@@ -103,7 +106,6 @@ class _profileState extends State<profile> {
 
   Future<void> _loadProfileId() async {
     profileId = await storage.read(key: 'profileId');
-
     if (profileId != null && profileId!.isNotEmpty) {
       // Load cached profile if available
       final cachedProfile = LocalStorageManager.getProfile(profileId!);
@@ -191,11 +193,40 @@ class _profileState extends State<profile> {
       setState(() => _isLoading = false);
     }
   }
-  
+
   Future<void> _viewFile(MyDocument doc) async {
-    if (doc.documentPath != null) {
-      final url = "https://foxlchits.com${doc.documentPath}";
-      await OpenFilex.open(url);
+    if (doc.documentPath != null && doc.documentPath!.isNotEmpty) {
+      try {
+        final url = "https://foxlchits.com${doc.documentPath}";
+        final uri = Uri.parse(url);
+
+        final response = await http.get(uri);
+        if (response.statusCode == 200) {
+          final dir = await getTemporaryDirectory();
+
+          // ✅ Extract file name and extension safely
+          String fileName = path.basename(uri.path); // e.g., "aadhar.jpg"
+          if (!fileName.contains('.')) {
+            // fallback if no extension present
+            fileName = "${doc.documentType}.pdf";
+          }
+
+          final file = File("${dir.path}/$fileName");
+          await file.writeAsBytes(response.bodyBytes);
+
+          // ✅ Open any file type (image, pdf, doc, etc.)
+          await OpenFilex.open(file.path);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Failed to download file.")),
+          );
+        }
+      } catch (e) {
+        print("⚠️ View file error: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Error opening file.")),
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("No file uploaded for ${doc.documentType}")),
@@ -519,14 +550,6 @@ class _profileState extends State<profile> {
                                   // Icons (✅ and add/view)
                                   Row(
                                     children: [
-                                      // ✅ Show verified tick
-                                      if (isVerified)
-                                        const Icon(
-                                          Icons.check_circle,
-                                          color: Colors.greenAccent,
-                                          size: 16,
-                                        ),
-
                                       // 🧾 Show view icon if document exists, else add icon
                                       GestureDetector(
                                         onTap: hasFile
@@ -552,6 +575,14 @@ class _profileState extends State<profile> {
                                           ),
                                         ),
                                       ),
+                                      SizedBox(width: 2,),
+                                      // ✅ Show verified tick
+                                      if (isVerified)
+                                        const Icon(
+                                          Icons.check_circle,
+                                          color: Colors.greenAccent,
+                                          size: 16,
+                                        ),
                                     ],
                                   ),
                                 ],

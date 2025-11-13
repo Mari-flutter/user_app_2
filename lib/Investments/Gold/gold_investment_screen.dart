@@ -1,15 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:user_app/Investments/Gold/sell_gold_screen.dart';
 import 'package:user_app/Investments/Gold/withdraw_for_gold_screen.dart';
-import 'package:user_app/My_Chits/Explore_chits/withdraw_for_chits_screen.dart';
 
 import '../../Bottom_Navbar/bottom_navigation_bar.dart';
 import '../../Models/Investments/Gold/CurrentGoldValue_Model.dart';
 import '../../Models/Investments/Gold/user_hold_gold_model.dart';
 import '../../Services/Gold_holdings.dart';
 import '../../Services/Gold_price.dart';
-import 'buy_gold_screen.dart';
+import 'Buy Gold/buy_gold_screen.dart';
+import 'Sell Gold/sell_gold_screen.dart';
 import 'gold_scheme_screen.dart';
 
 class gold_investment extends StatefulWidget {
@@ -35,7 +36,7 @@ class gold_investmentState extends State<gold_investment> {
   void switchToTab(int index) {
     _onItemTapped(index); // call the private one internally
   }
-
+  Timer? _autoRefreshTimer;
   @override
   void initState() {
     super.initState();
@@ -106,11 +107,26 @@ class gold_investmentState extends State<gold_investment> {
   }
 
   final List<String> buy_sell_scheme_tag = ['Buy Gold', 'Sell Gold', 'Schemes'];
-  late final List<Widget> pages = [buy_gold(), sell_gold(), gold_scheme()];
+  late final List<Widget> pages = [buy_gold(goldrate: _goldValue!.goldValue), sell_gold(), gold_scheme()];
 
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
+    if (_loading || _goldValue == null) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+    }
+
+    // ✅ Create pages safely here (after gold value is ready)
+    final pages = [
+      buy_gold(goldrate: _goldValue!.goldValue),
+      sell_gold(),
+      gold_scheme(),
+    ];
     return Scaffold(
       backgroundColor: Color(0xff000000),
       body: SafeArea(
@@ -179,12 +195,8 @@ class gold_investmentState extends State<gold_investment> {
                   width: double.infinity,
                   height: 168,
                   decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage(
-                        'assets/images/Investments/gold_investment_container.jpg',
-                      ),
-                      fit: BoxFit.fill, // full screen
-                    ),
+                    gradient: LinearGradient(colors: [Color(0xff734B1F),Color(0xffE1C083)]),
+                    borderRadius: BorderRadius.circular(11)
                   ),
                   child: Padding(
                     padding: EdgeInsets.symmetric(
@@ -291,15 +303,20 @@ class gold_investmentState extends State<gold_investment> {
                             ),
                             GestureDetector(
                               onTap: () {
+                                final goldPrice = _goldValue?.goldValue ?? 0;
+                                final holdings = goldHoldings?.userGold ?? 0;
+                                final totalValue = goldPrice * holdings;
+
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => withdraw_for_gold(),
+                                    builder: (context) => withdraw_for_gold(totalGoldValue: totalValue),
                                   ),
                                 );
                               },
+
                               child: Image.asset(
-                                'assets/images/Investments/withdraw.png',
+                                'assets/images/Investments/gold_withdraw.png',
                                 width: 60,
                                 height: 23,
                               ),

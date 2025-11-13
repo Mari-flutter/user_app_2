@@ -10,6 +10,21 @@ class SecureStorageService {
   static const _keyUserId = 'userId';
   static const _keyReferId = 'referId';
   static const _keyUserName = 'userName';
+  static const _keyUpcomingAuctionCount = 'upcomingAuctionCount';
+
+
+  // ✅ Save upcoming chit count
+  static Future<void> saveUpcomingAuctionCount(int count) async {
+    await _storage.write(key: _keyUpcomingAuctionCount, value: count.toString());
+    print("📦 Stored upcomingAuctionCount = $count");
+  }
+
+// ✅ Get upcoming chit count
+  static Future<int> getUpcomingAuctionCount() async {
+    final value = await _storage.read(key: _keyUpcomingAuctionCount);
+    return int.tryParse(value ?? '0') ?? 0;
+  }
+
 
 
 

@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:user_app/Bottom_Navbar/bottom_navigation_bar.dart';
 import 'package:user_app/Login/login_screen.dart';
-import 'package:user_app/My_Chits/Explore_chits/download_receipts_screen.dart';
-import 'package:user_app/button.dart';
 
 import 'Helper/Local_storage_manager.dart';
 import 'firebase_options.dart';

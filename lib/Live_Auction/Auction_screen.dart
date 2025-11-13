@@ -176,7 +176,7 @@ class _auction_screenState extends State<auction_screen> {
     );
 
     // Reset after 6 seconds so new navigation can occur
-    Future.delayed(const Duration(seconds: 6), () {
+    Future.delayed(const Duration(seconds:10), () {
       isDrawInProgress = false;
     });
   }
@@ -206,7 +206,14 @@ class _auction_screenState extends State<auction_screen> {
       _showInlineError("Enter a valid bid");
       return;
     }
-
+    if(bid < widget.minBid){
+      _showInlineError("Please enter a Bid abouve or equal ${widget.minBid}");
+      return;
+    }
+    if(bid > widget.maxBid){
+      _showInlineError("Please enter a Bid Below or equal ${widget.maxBid}");
+      return;
+    }
     final msg = {
       "type": "BID",
       "chitId": widget.chitId.trim().toLowerCase(),
@@ -660,7 +667,7 @@ class _auction_screenState extends State<auction_screen> {
                                             widget.myUsername
                                                 .trim()
                                                 .toLowerCase();
-                                    final isMaxBid = m.amount >= 40000;
+                                    final isMaxBid = m.amount == widget.maxBid;
                                     return Align(
                                       alignment: isMe
                                           ? Alignment.centerRight

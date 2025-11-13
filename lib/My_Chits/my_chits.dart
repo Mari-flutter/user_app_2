@@ -208,17 +208,6 @@ class _ActiveChitsPageState extends State<ActiveChitsPage> {
   Future<void> _loadActiveChits() async {
     setState(() => isLoading = true);
 
-    // 🔹 1. Load cached data instantly
-    final cachedList = LocalStorageManager.getActiveChitsApi(widget.userId);
-    if (cachedList.isNotEmpty) {
-      setState(() {
-        activeChits = cachedList;
-        isLoading = false;
-      });
-      print('📦 Loaded ${cachedList.length} active chits from Hive cache');
-    }
-
-    // 🔹 2. Fetch latest from API in background
     try {
       final url = Uri.parse(
         "https://foxlchits.com/api/JoinToChit/profile/${widget.profileId}/chits?userID=${widget.userId}",
@@ -232,201 +221,216 @@ class _ActiveChitsPageState extends State<ActiveChitsPage> {
         final freshList = data.map((e) => ActiveChit.fromJson(e)).toList();
 
         if (freshList.isNotEmpty) {
-          await LocalStorageManager.saveActiveChitsApi(
-            freshList,
-            widget.userId,
-          );
-          print('✅ Cached ${freshList.length} active chits to Hive');
-
-          if (mounted) {
-            setState(() => activeChits = freshList);
-            print(activeChits);
-          }
+          // ✅ API returned data — show & cache it
+          await LocalStorageManager.saveActiveChitsApi(freshList, widget.userId);
+          if (mounted) setState(() => activeChits = freshList);
+        } else {
+          // ❌ API returned empty — show "No chits"
+          if (mounted) setState(() => activeChits = []);
         }
       } else {
         print('⚠️ API error: ${response.statusCode}');
+        // 🌐 fallback to cache only if available
+        final cached = LocalStorageManager.getActiveChitsApi(widget.userId);
+        if (cached.isNotEmpty) {
+          print('📦 Showing cached chits due to API error');
+          if (mounted) setState(() => activeChits = cached);
+        } else {
+          if (mounted) setState(() => activeChits = []);
+        }
       }
     } catch (e) {
       print('❌ Exception while fetching active chits: $e');
+      // 🌐 fallback to cache only if available
+      final cached = LocalStorageManager.getActiveChitsApi(widget.userId);
+      if (cached.isNotEmpty) {
+        print('📦 Showing cached chits due to network error');
+        if (mounted) setState(() => activeChits = cached);
+      } else {
+        if (mounted) setState(() => activeChits = []);
+      }
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    if (isLoading) {
-      Column(
-        children: List.generate(5, (index) {
-          return Shimmer.fromColors(
-            baseColor: const Color(0xff2A2A2A),
-            highlightColor: const Color(0xff3A3A3A),
-            child: Container(
-              width: double.infinity,
-              height: size.height * 0.22,
-              margin: EdgeInsets.only(bottom: size.height * 0.02),
-              decoration: BoxDecoration(
-                color: const Color(0xff2A2A2A),
-                borderRadius: BorderRadius.circular(25),
+    return RefreshIndicator(
+      color: Colors.white,
+      backgroundColor: const Color(0xff3A7AFF),
+      onRefresh: _loadActiveChits,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child:  isLoading
+            ? Column(
+          children: List.generate(4, (index) {
+            return Shimmer.fromColors(
+              baseColor: const Color(0xff2A2A2A),
+              highlightColor: const Color(0xff3A3A3A),
+              child: Container(
+                width: double.infinity,
+                height: size.height * 0.22,
+                margin:
+                EdgeInsets.only(bottom: size.height * 0.02),
+                decoration: BoxDecoration(
+                  color: const Color(0xff2A2A2A),
+                  borderRadius: BorderRadius.circular(25),
+                ),
               ),
-            ),
-          );
-        }),
-      );
-    }
-    if (activeChits.isEmpty) {
-      return Center(
-        child: Column(
-          children: [
-            SizedBox(height: size.height * 0.15),
-            Image.asset(
-              'assets/images/My_Chits/no_active chits.png',
-              width: 232,
-              height: 232,
-            ),
-            SizedBox(height: size.height * 0.04),
-            Text(
-              "No active chits available at the moment!",
-              style: GoogleFonts.urbanist(
-                textStyle: const TextStyle(
-                  color: Color(0xffBBBBBB),
+            );
+          }),
+        )
+            : activeChits.isEmpty
+            ? Center(
+          child: Column(
+            children: [
+              SizedBox(height: size.height * 0.15),
+              Image.asset(
+                'assets/images/My_Chits/no_active chits.png',
+                width: 232,
+                height: 232,
+              ),
+              SizedBox(height: size.height * 0.04),
+              Text(
+                "No active chits available right now!",
+                style: GoogleFonts.urbanist(
+                  color: const Color(0xffBBBBBB),
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // 🔹 Show Active Chits
-    return SingleChildScrollView(
-      child: Column(
-        children: activeChits.map((chit) {
-          return Padding(
-            padding: EdgeInsets.only(bottom: size.height * 0.02),
-            child: Column(
-              children: [
-                // 🔹 Chit Card (Top section)
-                Container(
-                  width: double.infinity,
-                  height: size.height * 0.21,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(25),
-                    gradient: const LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [Color(0xff232323), Color(0xff383836)],
+            ],
+          ),
+        )
+            : Column(
+          children: activeChits.map((chit) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: size.height * 0.02),
+              child: Column(
+                children: [
+                  // 🔹 Chit Card (Top section)
+                  Container(
+                    width: double.infinity,
+                    height: size.height * 0.21,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(25),
+                      gradient: const LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [Color(0xff232323), Color(0xff383836)],
+                      ),
                     ),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: size.width * 0.04,
-                      vertical: size.height * 0.02,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Title Row
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              chit.chitsName,
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xff3A7AFF),
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              chit.chitsType,
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xffB5B4B4),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        SizedBox(height: size.height * 0.01),
-
-                        // Info Rows
-                        _buildInfoRow(
-                          "Chit Value : ₹${chit.value.toStringAsFixed(0)}",
-                          "Mon.Contribution : ₹${chit.contribution.toStringAsFixed(0)}",
-                        ),
-                        _buildInfoRow(
-                          "Total Members : ${chit.totalMember}",
-                          "Joined : ${chit.currentMemberCount}/${chit.totalMember}",
-                        ),
-                        _buildInfoRow(
-                          "Duration : ${chit.timePeriod} months",
-                          "Due Date : ${chit.duedate.toLocal().toString().split(' ')[0]}",
-                        ),
-                        SizedBox(height: size.height * 0.01),
-                        Align(
-                          alignment: Alignment.bottomRight,
-                          child: GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => explore_chit(
-                                    completedMonths: 3,
-                                    chitValue: chit.value,
-                                    totalContribution:chit.contribution,
-                                    auctionDateTime: "2025-10-06T10:00:00",
-                                    timePeriod: chit.timePeriod,        // 🔹 from ActiveChit model
-                                    otherCharges: chit.otherCharges ?? 0.0, // 🔹 optional safe check
-                                    penalty: chit.penalty ?? 0.0,
-                                    taxes: chit.taxes ?? 0.0,
-                                    chitId: chit.id,
-                                    chitName : chit.chitsName,
-                                    chitType : chit.chitsType,
-                                    TotalMembers : chit.totalMember,
-                                    CurrentMember : chit.currentMemberCount,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: size.width * 0.04,
+                        vertical: size.height * 0.02,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Title Row
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                chit.chitsName,
+                                style: GoogleFonts.urbanist(
+                                  textStyle: const TextStyle(
+                                    color: Color(0xff3A7AFF),
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                              );
-                            },
-                            child: Container(
-                              width: 78,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(7),
-                                color: const Color(0xffFFFFFF),
                               ),
-                              child: Center(
-                                child: Text(
-                                  'Explore',
-                                  style: GoogleFonts.urbanist(
-                                    textStyle: const TextStyle(
-                                      color: Color(0xff000000),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
+                              Text(
+                                chit.chitsType,
+                                style: GoogleFonts.urbanist(
+                                  textStyle: const TextStyle(
+                                    color: Color(0xffB5B4B4),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+      
+                          SizedBox(height: size.height * 0.01),
+      
+                          // Info Rows
+                          _buildInfoRow(
+                            "Chit Value : ₹${chit.value.toStringAsFixed(0)}",
+                            "Mon.Contribution : ₹${chit.contribution.toStringAsFixed(0)}",
+                          ),
+                          _buildInfoRow(
+                            "Total Members : ${chit.totalMember}",
+                            "Joined : ${chit.currentMemberCount}/${chit.totalMember}",
+                          ),
+                          _buildInfoRow(
+                            "Duration : ${chit.timePeriod} months",
+                            "Due Date : ${chit.duedate.toLocal().toString().split(' ')[0]}",
+                          ),
+                          SizedBox(height: size.height * 0.01),
+                          Align(
+                            alignment: Alignment.bottomRight,
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => explore_chit(
+                                      completedMonths: 3,
+                                      chitValue: chit.value,
+                                      totalContribution:chit.contribution,
+                                      timePeriod: chit.timePeriod,        // 🔹 from ActiveChit model
+                                      otherCharges: chit.otherCharges ?? 0.0, // 🔹 optional safe check
+                                      penalty: chit.penalty ?? 0.0,
+                                      taxes: chit.taxes ?? 0.0,
+                                      chitId: chit.id,
+                                      chitName : chit.chitsName,
+                                      chitType : chit.chitsType,
+                                      TotalMembers : chit.totalMember,
+                                      CurrentMember : chit.currentMemberCount,
+                                      auctionSchedules: chit.auctionSchedules,
+                                      auctionDateTime: chit.duedate.toIso8601String(),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                width: 78,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(7),
+                                  color: const Color(0xffFFFFFF),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'Explore',
+                                    style: GoogleFonts.urbanist(
+                                      textStyle: const TextStyle(
+                                        color: Color(0xff000000),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -491,213 +495,243 @@ class _RequestedChitsPageState extends State<RequestedChitsPage> {
       _isLoadedOnce = true;
     }
   }
-
   Future<void> _loadRequestedChits() async {
     setState(() => isLoading = true);
 
-    // 🔹 1. Load cached data immediately (no spinner delay)
-    final cachedList = LocalStorageManager.getRequestedChitsApi();
-    if (cachedList.isNotEmpty) {
-      setState(() {
-        requestedChits = cachedList
-            .map((e) => RequestedChitModel.fromJson(e))
-        // 🚫 Skip "UserConfirmed" chits from cache
-            .where((chit) => chit.status.toLowerCase() != 'userconfirmed')
-            .toList();
-        isLoading = false;
-      });
-      print(
-        '📦 Loaded ${requestedChits.length} requested chits from Hive cache',
-      );
-    }
-
-    // 🔹 2. Fetch from API in background
     try {
       final url = Uri.parse(
         "https://foxlchits.com/api/JoinToChit/${widget.profileId}/requests?userID=${widget.userId}",
       );
-      print(url);
+      print('🌍 Requested Chits API URL: $url');
+
       final response = await http.get(url);
-      print(response);
+      print('📡 Response Status Code: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         final freshList = data
             .map((json) => RequestedChitModel.fromJson(json))
-        // 🚫 Hide chits with status == "UserConfirmed"
             .where((chit) => chit.status.toLowerCase() != 'userconfirmed')
             .toList();
 
-        // If data differs, update Hive and UI
         if (freshList.isNotEmpty) {
+          // ✅ API returned data — show & cache it
           await LocalStorageManager.saveRequestedChitsApi(
             freshList.map((e) => e.toJson()).toList(),
           );
-          print('✅ Cached requested chits (${freshList.length}) to Hive');
-
-          // Update state only if list changed
-          if (mounted) {
-            setState(() => requestedChits = freshList);
-          }
+          if (mounted) setState(() => requestedChits = freshList);
+        } else {
+          // ❌ API returned empty — show "No requested chits"
+          if (mounted) setState(() => requestedChits = []);
         }
       } else {
         print('⚠️ API error: ${response.statusCode}');
+        // 🌐 fallback to cache only if available
+        final cached = LocalStorageManager.getRequestedChitsApi();
+        if (cached.isNotEmpty) {
+          print('📦 Showing cached requested chits due to API error');
+          final list = cached
+              .map((e) => RequestedChitModel.fromJson(e))
+              .where((chit) => chit.status.toLowerCase() != 'userconfirmed')
+              .toList();
+          if (mounted) setState(() => requestedChits = list);
+        } else {
+          if (mounted) setState(() => requestedChits = []);
+        }
       }
     } catch (e) {
-      print('❌ Exception while fetching chits: $e');
+      print('❌ Exception while fetching requested chits: $e');
+      // 🌐 fallback to cache only if available
+      final cached = LocalStorageManager.getRequestedChitsApi();
+      if (cached.isNotEmpty) {
+        print('📦 Showing cached requested chits due to network error');
+        final list = cached
+            .map((e) => RequestedChitModel.fromJson(e))
+            .where((chit) => chit.status.toLowerCase() != 'userconfirmed')
+            .toList();
+        if (mounted) setState(() => requestedChits = list);
+      } else {
+        if (mounted) setState(() => requestedChits = []);
+      }
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-
-    if (isLoading) {
-      Column(
-        children: List.generate(5, (index) {
-          return Shimmer.fromColors(
-            baseColor: const Color(0xff2A2A2A),
-            highlightColor: const Color(0xff3A3A3A),
-            child: Container(
-              width: double.infinity,
-              height: size.height * 0.22,
-              margin: EdgeInsets.only(bottom: size.height * 0.02),
-              decoration: BoxDecoration(
-                color: const Color(0xff2A2A2A),
-                borderRadius: BorderRadius.circular(25),
+    return RefreshIndicator(
+      color: Colors.white,
+      backgroundColor: const Color(0xff3A7AFF),
+      onRefresh: _loadRequestedChits,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: isLoading
+            ? Column(
+          children: List.generate(4, (index) {
+            return Shimmer.fromColors(
+              baseColor: const Color(0xff2A2A2A),
+              highlightColor: const Color(0xff3A3A3A),
+              child: Container(
+                width: double.infinity,
+                height: size.height * 0.22,
+                margin:
+                EdgeInsets.only(bottom: size.height * 0.02),
+                decoration: BoxDecoration(
+                  color: const Color(0xff2A2A2A),
+                  borderRadius: BorderRadius.circular(25),
+                ),
               ),
-            ),
-          );
-        }),
-      );
-    }
-    if (requestedChits.isEmpty) {
-      return Center(
-        child: Column(
-          children: [
-            SizedBox(height: size.height * 0.15),
-            Image.asset(
-              'assets/images/My_Chits/no_active chits.png',
-              width: 232,
-              height: 232,
-            ),
-            SizedBox(height: size.height * 0.04),
-            Text(
-              "No requested chits yet!",
-              style: GoogleFonts.urbanist(
-                textStyle: const TextStyle(
-                  color: Color(0xffBBBBBB),
+            );
+          }),
+        )
+            : requestedChits.isEmpty
+            ? Center(
+          child: Column(
+            children: [
+              SizedBox(height: size.height * 0.15),
+              Image.asset(
+                'assets/images/My_Chits/no_active chits.png',
+                width: 232,
+                height: 232,
+              ),
+              SizedBox(height: size.height * 0.04),
+              Text(
+                "No requested chits yet!",
+                style: GoogleFonts.urbanist(
+                  color: const Color(0xffBBBBBB),
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return SingleChildScrollView(
-      child: Column(
-        children: requestedChits.map((chit) {
-          final bool isPending = chit.status.toLowerCase() !=( "mainboardapproved" )&& chit.status.toLowerCase() !=( 'userconfirmed');
-          final String statusLabel = isPending ? "Requested" : "Aproved";
-
-          return Padding(
-            padding: EdgeInsets.only(bottom: size.height * 0.02),
-            child: Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  height: size.height * 0.21,
-                  decoration: BoxDecoration(
-                    borderRadius: isPending
-                        ? BorderRadius.only(
-                            topLeft: Radius.circular(25),
-                            topRight: Radius.circular(25),
-                          )
-                        : BorderRadius.circular(25),
-                    gradient: const LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [Color(0xff232323), Color(0xff383836)],
+            ],
+          ),
+        )
+            :Column(
+          children: requestedChits.map((chit) {
+            final bool isPending = chit.status.toLowerCase() !=( "mainboardapproved" )&& chit.status.toLowerCase() !=( 'userconfirmed');
+            final String statusLabel = isPending ? "Requested" : "Aproved";
+      
+            return Padding(
+              padding: EdgeInsets.only(bottom: size.height * 0.02),
+              child: Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    height: size.height * 0.21,
+                    decoration: BoxDecoration(
+                      borderRadius: isPending
+                          ? BorderRadius.only(
+                              topLeft: Radius.circular(25),
+                              topRight: Radius.circular(25),
+                            )
+                          : BorderRadius.circular(25),
+                      gradient: const LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [Color(0xff232323), Color(0xff383836)],
+                      ),
                     ),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: size.width * 0.04,
-                      vertical: size.height * 0.02,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Title + Type
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              chit.chitsName,
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xff3A7AFF),
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w600,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: size.width * 0.04,
+                        vertical: size.height * 0.02,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Title + Type
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                chit.chitsName,
+                                style: GoogleFonts.urbanist(
+                                  textStyle: const TextStyle(
+                                    color: Color(0xff3A7AFF),
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Text(
-                              chit.chitsType,
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xffB5B4B4),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                              Text(
+                                chit.chitsType,
+                                style: GoogleFonts.urbanist(
+                                  textStyle: const TextStyle(
+                                    color: Color(0xffB5B4B4),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-
-                        SizedBox(height: size.height * 0.01),
-
-                        // Info rows
-                        _buildInfoRow(
-                          "Chit Value : ₹${chit.value.toStringAsFixed(0)}",
-                          "Mon.Contribution : ₹${chit.contribution.toStringAsFixed(0)}/-",
-                        ),
-                        _buildInfoRow(
-                          "Duration : ${chit.timePeriod} months",
-                          "Requested Date : ₹${chit.requestDate.toLocal().toString().split(' ')[0]}",
-                        ),
-                        // _buildInfoRow(
-                        //   "Total Members : ${chit.members.length}",
-                        //   "Added Members: ${chit.currentMemberCount.toStringAsFixed(0)}/${chit.members.length}",
-                        // ),
-                        _buildInfoRow(
-                          "Status : ${chit.status}",
-                          "Due Date : ${chit.duedate.toLocal().toString().split(' ')[0]}",
-                        ),
-
-                        SizedBox(height: size.height * 0.01),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            if (!isPending)
+                            ],
+                          ),
+      
+                          SizedBox(height: size.height * 0.01),
+      
+                          // Info rows
+                          _buildInfoRow(
+                            "Chit Value : ₹${chit.value.toStringAsFixed(0)}",
+                            "Mon.Contribution : ₹${chit.contribution.toStringAsFixed(0)}/-",
+                          ),
+                          _buildInfoRow(
+                            "Duration : ${chit.timePeriod} months",
+                            "Requested Date : ₹${chit.requestDate.toLocal().toString().split(' ')[0]}",
+                          ),
+                          // _buildInfoRow(
+                          //   "Total Members : ${chit.members.length}",
+                          //   "Added Members: ${chit.currentMemberCount.toStringAsFixed(0)}/${chit.members.length}",
+                          // ),
+                          _buildInfoRow(
+                            "Status : ${chit.status}",
+                            "Due Date : ${chit.duedate.toLocal().toString().split(' ')[0]}",
+                          ),
+      
+                          SizedBox(height: size.height * 0.01),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              if (!isPending)
+                                Container(
+                                  width: 100,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(7),
+                                    color: const Color(0xffFFFFFF),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      'Pay Due',
+                                      style: GoogleFonts.urbanist(
+                                        textStyle: TextStyle(
+                                          color: const Color(0xff000000),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              SizedBox(width: size.width * 0.02),
                               Container(
                                 width: 100,
                                 height: 24,
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(7),
-                                  color: const Color(0xffFFFFFF),
+                                  color: isPending
+                                      ? const Color(0xff626262)
+                                      : const Color(0xff3fea96),
                                 ),
                                 child: Center(
                                   child: Text(
-                                    'Pay Due',
+                                    statusLabel,
                                     style: GoogleFonts.urbanist(
                                       textStyle: TextStyle(
-                                        color: const Color(0xff000000),
+                                        color: isPending
+                                            ? const Color(0xffC4C4C4)
+                                            : const Color(0xff000000),
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -705,76 +739,52 @@ class _RequestedChitsPageState extends State<RequestedChitsPage> {
                                   ),
                                 ),
                               ),
-                            SizedBox(width: size.width * 0.02),
-                            Container(
-                              width: 100,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(7),
-                                color: isPending
-                                    ? const Color(0xff626262)
-                                    : const Color(0xff3fea96),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  statusLabel,
-                                  style: GoogleFonts.urbanist(
-                                    textStyle: TextStyle(
-                                      color: isPending
-                                          ? const Color(0xffC4C4C4)
-                                          : const Color(0xff000000),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-
-                // Grey note section
-                if (isPending)
-                  Container(
-                    width: double.infinity,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(25),
-                        bottomRight: Radius.circular(25),
-                      ),
-                      color: Color(0xffD6D6D6),
-                    ),
-                    child: Row(
-                      children: [
-                        SizedBox(width: size.width * 0.04),
-                        Image.asset(
-                          'assets/images/My_Chits/time.png',
-                          width: 24,
-                          height: 24,
+      
+                  // Grey note section
+                  if (isPending)
+                    Container(
+                      width: double.infinity,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(25),
+                          bottomRight: Radius.circular(25),
                         ),
-                        SizedBox(width: size.width * 0.02),
-                        Text(
-                          'Your chit request has been sent successfully. Once verified,\nyou’ll be added to the chit group.',
-                          style: GoogleFonts.urbanist(
-                            textStyle: const TextStyle(
-                              color: Color(0xff6B6B6B),
-                              fontSize: 9,
-                              fontWeight: FontWeight.w500,
+                        color: Color(0xffD6D6D6),
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(width: size.width * 0.04),
+                          Image.asset(
+                            'assets/images/My_Chits/time.png',
+                            width: 24,
+                            height: 24,
+                          ),
+                          SizedBox(width: size.width * 0.02),
+                          Text(
+                            'Your chit request has been sent successfully. Once verified,\nyou’ll be added to the chit group.',
+                            style: GoogleFonts.urbanist(
+                              textStyle: const TextStyle(
+                                color: Color(0xff6B6B6B),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-              ],
-            ),
-          );
-        }).toList(),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }

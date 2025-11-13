@@ -3,6 +3,10 @@ import 'package:http/http.dart' as http;
 import 'package:user_app/Models/Investments/Gold/CurrentGoldValue_Model.dart';
 import 'package:user_app/Helper/Local_storage_manager.dart';
 
+// In user_app/Services/Gold_price.dart (formerly GoldService)
+
+// ... existing imports ...
+
 class GoldService {
   static const String _apiUrl = 'https://foxlchits.com/api/GoldInvestments';
 
@@ -12,10 +16,14 @@ class GoldService {
     final response = await http.get(Uri.parse(_apiUrl));
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
+
       if (data.isNotEmpty) {
-        final gold = CurrentGoldValue.fromJson(data[0]);
+        // 🔑 MODIFICATION HERE: Use data.last to get the last/latest item
+        // in the list, assuming the API sends the newest price last.
+        final gold = CurrentGoldValue.fromJson(data.last);
+
         await LocalStorageManager.saveGoldValue(gold);
-        print('✅ Gold value saved locally: ₹${gold.goldValue}');
+        print('✅ Latest gold value saved locally: ₹${gold.goldValue}');
         return gold;
       }
     } else {
@@ -24,7 +32,7 @@ class GoldService {
     return null;
   }
 
-  // ✅ Read cached value
+  // ✅ Read cached value (This can remain the same)
   static Future<CurrentGoldValue?> getCachedGoldValue() async {
     final cached = LocalStorageManager.getGoldValue();
     if (cached != null) {

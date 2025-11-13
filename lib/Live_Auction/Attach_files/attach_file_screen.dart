@@ -5,6 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
+
 import 'package:user_app/Live_Auction/Attach_files/document_submitted.dart';
 import '../../Models/Live_Auction/my_document_model.dart';
 import '../../Services/secure_storage.dart';
@@ -37,15 +40,39 @@ class _attach_fileState extends State<attach_file> {
       }
 
       final url = Uri.parse(
-          "https://foxlchits.com/api/Auctionwinner/my-documents/$profileId");
+        "https://foxlchits.com/api/Auctionwinner/my-documents/$profileId",
+      );
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
         final List data = jsonDecode(response.body);
+
+        // ✅ Convert API data into model list
+        final docs = data.map((e) => MyDocument.fromJson(e)).toList();
+
+        // ✅ Normalize empty strings to null for safety
+        // ✅ Normalize empty strings to null for safety (immutable model fix)
+        final normalizedDocs = docs.map((d) {
+          final normalizedPath = (d.documentPath != null && d.documentPath!.trim().isEmpty)
+              ? null
+              : d.documentPath;
+
+          return MyDocument(
+            id: d.id,
+            documentType: d.documentType,
+            documentPath: normalizedPath,
+            status: d.status,
+            uploadedAt: d.uploadedAt,
+            verifiedAt: d.verifiedAt,
+            documentTypeId: d.documentTypeId,
+          );
+        }).toList();
+
         setState(() {
-          _documents = data.map((e) => MyDocument.fromJson(e)).toList();
+          _documents = normalizedDocs;
           _isLoading = false;
         });
+
       } else {
         print("❌ Failed to fetch documents: ${response.statusCode}");
         setState(() => _isLoading = false);
@@ -81,55 +108,40 @@ class _attach_fileState extends State<attach_file> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(color: Colors.white),
-      ),
+      builder: (_) =>
+      const Center(child: CircularProgressIndicator(color: Colors.white)),
     );
 
     try {
-      final url = Uri.parse("https://foxlchits.com/api/Auctionwinner/upload-document");
+      final url = Uri.parse(
+        "https://foxlchits.com/api/Auctionwinner/upload-document",
+      );
       final request = http.MultipartRequest('POST', url);
 
-      // Required fields
       request.fields['ProfileId'] = profileId;
       request.fields['DocumentTypeId'] = documentTypeId;
-
-      // Attach file
       request.files.add(await http.MultipartFile.fromPath('File', filePath));
 
-      // Optional headers (multipart handled automatically)
-      request.headers.addAll({
-        "Accept": "application/json",
-      });
-
-      print("📤 Uploading:");
-      print("➡️ ProfileId: $profileId");
-      print("➡️ DocumentTypeId: $documentTypeId");
-      print("➡️ File: ${file.path}");
-
       final response = await request.send();
+      Navigator.pop(context);
+
       final responseBody = await response.stream.bytesToString();
-
-      print("📥 Server response (${response.statusCode}): $responseBody");
-
-      Navigator.pop(context); // close loader
+      print("📥 Upload Response (${response.statusCode}): $responseBody");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("✅ File uploaded successfully")),
         );
-        await _fetchDocumentsFromServer(); // refresh data
+        await _fetchDocumentsFromServer(); // refresh
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              "❌ Upload failed (Code: ${response.statusCode})",
-            ),
+            content: Text("❌ Upload failed: ${response.statusCode}"),
           ),
         );
       }
     } catch (e) {
-      Navigator.pop(context); // close loader
+      Navigator.pop(context);
       print("⚠️ Upload error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Upload failed, please try again")),
@@ -137,8 +149,7 @@ class _attach_fileState extends State<attach_file> {
     }
   }
 
-
-  /// 🧾 Pick a file and upload for a specific document type
+  /// 🧾 Pick file and upload
   Future<void> _pickFile(MyDocument doc) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -152,49 +163,50 @@ class _attach_fileState extends State<attach_file> {
       );
       await _uploadDocument(
         filePath: filePath,
-        documentTypeId: doc.id,
+        documentTypeId: doc.documentTypeId,
       );
     }
   }
 
-  /// 👁️ View file if available
+  /// 👁️ View uploaded file
   Future<void> _viewFile(MyDocument doc) async {
-    if (doc.documentPath != null) {
-      final url = "https://foxlchits.com${doc.documentPath}";
-      await OpenFilex.open(url);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("No file uploaded for ${doc.documentType}")),
-      );
-    }
-  }
+    if (doc.documentPath != null && doc.documentPath!.isNotEmpty) {
+      try {
+        final url = "https://foxlchits.com${doc.documentPath}";
+        final uri = Uri.parse(url);
+        final response = await http.get(uri);
 
-  /// ❌ Delete from UI (optional)
-  void _deleteFile(MyDocument doc) {
-    setState(() {
-      _documents = _documents.map((d) {
-        if (d.id == doc.id) {
-          return MyDocument(
-            id: d.id,
-            documentType: d.documentType,
-            documentPath: null, // mark deleted
-            status: "Pending",
-            uploadedAt: d.uploadedAt,
-            verifiedAt: d.verifiedAt,
+        if (response.statusCode == 200) {
+          final dir = await getTemporaryDirectory();
+          final fileName = path.basename(uri.path);
+          final file = File("${dir.path}/$fileName");
+          await file.writeAsBytes(response.bodyBytes);
+          await OpenFilex.open(file.path);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Failed to open file.")),
           );
         }
-        return d;
-      }).toList();
-    });
+      } catch (e) {
+        print("⚠️ View file error: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Error opening file.")),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("No file for ${doc.documentType}")),
+      );
+    }
   }
 
-
-  // ====================== UI (unchanged structure) ======================
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
-    bool allUploaded =
-        _documents.isNotEmpty && _documents.every((d) => d.documentPath != null);
+
+    // ✅ Continue button only when all docs uploaded
+    bool allUploaded = _documents.isNotEmpty &&
+        _documents.every((d) => d.documentPath != null && d.documentPath!.isNotEmpty);
 
     return Scaffold(
       backgroundColor: const Color(0xff000000),
@@ -211,41 +223,38 @@ class _attach_fileState extends State<attach_file> {
                 Text(
                   'Attach File',
                   style: GoogleFonts.urbanist(
-                    textStyle: const TextStyle(
-                      color: Color(0xffE2E2E2),
-                      fontSize: 28,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    color: const Color(0xffE2E2E2),
+                    fontSize: 28,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 SizedBox(height: size.height * 0.008),
                 Text(
                   'Kindly share the requested details for verification.',
                   style: GoogleFonts.urbanist(
-                    textStyle: const TextStyle(
-                      color: Color(0xff6B6B6B),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    color: const Color(0xff6B6B6B),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 SizedBox(height: size.height * 0.04),
 
-                // 🔁 Build all document rows dynamically
-                ..._documents.map((doc) => Padding(
-                  padding: EdgeInsets.only(bottom: size.height * 0.03),
-                  child: _buildDocumentRow(
-                    size,
-                    title: doc.documentType,
-                    isUploaded: doc.documentPath != null,
-                    onAdd: () => _pickFile(doc),
-                    onView: () => _viewFile(doc),
-                    onDelete: () => _deleteFile(doc),
-                    status: doc.status,
-                  ),
-                )),
+                // 🔁 Build document rows
+                ..._documents.map((doc) {
+                  final isUploaded = doc.documentPath != null && doc.documentPath!.isNotEmpty;
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: size.height * 0.03),
+                    child: _buildDocumentRow(
+                      size,
+                      title: doc.documentType,
+                      isUploaded: isUploaded,
+                      onAdd: () => _pickFile(doc),
+                      onView: () => _viewFile(doc),
+                      status: doc.status,
+                    ),
+                  );
+                }).toList(),
 
-                // Continue button
                 if (allUploaded) _buildContinueButton(context, size),
               ],
             ),
@@ -255,18 +264,15 @@ class _attach_fileState extends State<attach_file> {
     );
   }
 
-  // ✅ Reusable document row (UI stays same)
   Widget _buildDocumentRow(
       Size size, {
         required String title,
         required bool isUploaded,
         required VoidCallback onAdd,
         required VoidCallback onView,
-        required VoidCallback onDelete,
         String? status,
       }) {
     return Container(
-      width: double.infinity,
       height: 46,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(11),
@@ -279,11 +285,9 @@ class _attach_fileState extends State<attach_file> {
             Text(
               title,
               style: GoogleFonts.urbanist(
-                textStyle: const TextStyle(
-                  color: Color(0xffFFFFFF),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const Spacer(),
@@ -296,7 +300,7 @@ class _attach_fileState extends State<attach_file> {
                   height: 20,
                 ),
               ),
-            if (isUploaded) ...[
+            if (isUploaded)
               GestureDetector(
                 onTap: onView,
                 child: Image.asset(
@@ -305,19 +309,9 @@ class _attach_fileState extends State<attach_file> {
                   height: 20,
                 ),
               ),
-              if (status == "Verified") ...[
-                SizedBox(width: size.width * 0.02),
-                const Icon(Icons.check_circle, color: Colors.green, size: 18),
-              ],
-              SizedBox(width: size.width * 0.03),
-              GestureDetector(
-                onTap: onDelete,
-                child: Image.asset(
-                  'assets/images/Live_Auction/delete.png',
-                  width: 20,
-                  height: 20,
-                ),
-              ),
+            if (status == "Verified") ...[
+              SizedBox(width: size.width * 0.02),
+              const Icon(Icons.check_circle, color: Colors.green, size: 18),
             ],
           ],
         ),
@@ -330,33 +324,25 @@ class _attach_fileState extends State<attach_file> {
       padding: EdgeInsets.symmetric(vertical: size.height * 0.03),
       child: Align(
         alignment: Alignment.centerRight,
-        child: SizedBox(
-          width: 120,
-          height: 37,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xff585858),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(11),
-              ),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xff585858),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(11),
             ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const document_submited(),
-                ),
-              );
-            },
-            child: Text(
-              'Continue',
-              style: GoogleFonts.urbanist(
-                textStyle: const TextStyle(
-                  color: Color(0xffFFFFFF),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+          ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const document_submited()),
+            );
+          },
+          child: Text(
+            'Continue',
+            style: GoogleFonts.urbanist(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),

@@ -1,6 +1,8 @@
 import 'dart:convert';
 
-/// Represents a single chit item from the ChitsCreate/all API.
+/// Represents a single chit item from either:
+/// - /api/MainBoard/ChitsCreate/all
+/// - /api/MainBoard/ChitsCreate/active-upcoming
 class Chit_Group_Model {
   final String id;
   final String chitsID;
@@ -20,6 +22,11 @@ class Chit_Group_Model {
   final DateTime duedate;
   final List<DateTime> auctionDates;
 
+  // 🆕 New fields for active-upcoming API
+  final double? currentMemberCount;
+  final DateTime? nextAuctionDate;
+  final List<UpcomingAuction>? upcomingAuctions;
+
   Chit_Group_Model({
     required this.id,
     required this.chitsID,
@@ -38,15 +45,34 @@ class Chit_Group_Model {
     required this.winningType,
     required this.duedate,
     required this.auctionDates,
+    this.currentMemberCount,
+    this.nextAuctionDate,
+    this.upcomingAuctions,
   });
 
   /// Create a ChitModel instance from a JSON map.
   factory Chit_Group_Model.fromJson(Map<String, dynamic> json) {
+    // Handle both APIs gracefully
+    List<DateTime> parsedAuctionDates = [];
+
+    if (json.containsKey('auctionDates') && json['auctionDates'] is List) {
+      parsedAuctionDates = (json['auctionDates'] as List)
+          .map((e) => DateTime.tryParse(e?.toString() ?? '') ?? DateTime.now())
+          .toList();
+    } else if (json.containsKey('upcomingAuctions') &&
+        json['upcomingAuctions'] is List) {
+      parsedAuctionDates = (json['upcomingAuctions'] as List)
+          .map((e) =>
+      DateTime.tryParse(e['auctionDate']?.toString() ?? '') ??
+          DateTime.now())
+          .toList();
+    }
+
     return Chit_Group_Model(
-      id: json['id'] ?? '',
-      chitsID: json['chitsID'] ?? '',
-      chitsName: json['chitsName'] ?? '',
-      chitsType: json['chitsType'] ?? '',
+      id: json['id']?.toString() ?? '',
+      chitsID: json['chitsID']?.toString() ?? '',
+      chitsName: json['chitsName']?.toString() ?? '',
+      chitsType: json['chitsType']?.toString() ?? '',
       value: (json['value'] ?? 0).toDouble(),
       timePeriod: json['timePeriod'] ?? 0,
       totalMember: json['totalMember'] ?? 0,
@@ -57,13 +83,18 @@ class Chit_Group_Model {
       penalty: (json['penalty'] ?? 0).toDouble(),
       taxes: (json['taxes'] ?? 0).toDouble(),
       otherCharges: (json['otherCharges'] ?? 0).toDouble(),
-      winningType: json['winningType'] ?? '',
-      duedate: DateTime.tryParse(json['duedate'] ?? '') ?? DateTime.now(),
-      auctionDates:
-          (json['auctionDates'] as List<dynamic>?)
-              ?.map((e) => DateTime.tryParse(e.toString()) ?? DateTime.now())
-              .toList() ??
-          [],
+      winningType: json['winningType']?.toString() ?? '',
+      duedate:
+      DateTime.tryParse(json['duedate']?.toString() ?? '') ?? DateTime.now(),
+      auctionDates: parsedAuctionDates,
+      // 🆕 New fields
+      currentMemberCount: (json['currentMemberCount'] ?? 0).toDouble(),
+      nextAuctionDate: json['nextAuctionDate'] != null
+          ? DateTime.tryParse(json['nextAuctionDate'].toString())
+          : null,
+      upcomingAuctions: (json['upcomingAuctions'] as List?)
+          ?.map((e) => UpcomingAuction.fromJson(e))
+          .toList(),
     );
   }
 
@@ -87,6 +118,9 @@ class Chit_Group_Model {
       'winningType': winningType,
       'duedate': duedate.toIso8601String(),
       'auctionDates': auctionDates.map((e) => e.toIso8601String()).toList(),
+      'currentMemberCount': currentMemberCount,
+      'nextAuctionDate': nextAuctionDate?.toIso8601String(),
+      'upcomingAuctions': upcomingAuctions?.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -94,5 +128,36 @@ class Chit_Group_Model {
   static List<Chit_Group_Model> listFromJson(String responseBody) {
     final List<dynamic> jsonData = json.decode(responseBody);
     return jsonData.map((e) => Chit_Group_Model.fromJson(e)).toList();
+  }
+}
+
+/// 🆕 Upcoming auction structure (for new API)
+class UpcomingAuction {
+  final String id;
+  final DateTime auctionDate;
+  final bool completed;
+
+  UpcomingAuction({
+    required this.id,
+    required this.auctionDate,
+    required this.completed,
+  });
+
+  factory UpcomingAuction.fromJson(Map<String, dynamic> json) {
+    return UpcomingAuction(
+      id: json['id']?.toString() ?? '',
+      auctionDate:
+      DateTime.tryParse(json['auctionDate']?.toString() ?? '') ??
+          DateTime.now(),
+      completed: json['completed'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'auctionDate': auctionDate.toIso8601String(),
+      'completed': completed,
+    };
   }
 }

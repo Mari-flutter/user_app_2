@@ -3,15 +3,37 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:user_app/Investments/Gold/gold_investment_screen.dart';
 import 'package:user_app/My_Chits/Explore_chits/add_account_screen.dart';
 
+import '../../Services/secure_storage.dart';
+
 
 class withdraw_for_gold extends StatefulWidget {
-  const withdraw_for_gold({super.key});
+  final double totalGoldValue; // ✅ add this
+
+  const withdraw_for_gold({
+    super.key,
+    required this.totalGoldValue, // ✅ mark required
+  });
 
   @override
   State<withdraw_for_gold> createState() => _withdraw_for_goldState();
 }
 
 class _withdraw_for_goldState extends State<withdraw_for_gold> {
+  String? userName;
+  String? UserId;
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileId();
+  }
+  Future<void> _loadProfileId() async {
+    final username = await SecureStorageService.getUserName();
+    final userId = await SecureStorageService.getUserId();
+    setState(() {
+      userName = username;
+      UserId = userId;
+    });
+  }
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -104,7 +126,7 @@ class _withdraw_for_goldState extends State<withdraw_for_gold> {
                         Align(
                           alignment: Alignment.bottomRight,
                           child: Text(
-                            '₹1,85,000',
+                            '₹${widget.totalGoldValue.toStringAsFixed(1)}',
                             style: GoogleFonts.urbanist(
                               textStyle: const TextStyle(
                                 color: Color(0xff07C66A),
@@ -116,7 +138,7 @@ class _withdraw_for_goldState extends State<withdraw_for_gold> {
                         ),
                         SizedBox(height: size.height * 0.035),
                         Text(
-                          '#FO2839 Dinesh Viswanathan',
+                          '${userName} (${UserId})',
                           style: GoogleFonts.urbanist(
                             textStyle: const TextStyle(
                               color: Color(0xffFFFFFF),

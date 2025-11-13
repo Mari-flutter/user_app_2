@@ -1,6 +1,8 @@
+// login.dart
 import 'dart:async';
 import 'dart:convert';
-
+import 'dart:developer' as developer;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,8 +11,46 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:user_app/Bottom_Navbar/bottom_navigation_bar.dart';
 
-import '../Models/Login/request_otp.dart';
-import '../Models/Login/verify_otp.dart';
+class RequestOtpModel {
+  final String phoneNumber;
+  RequestOtpModel({required this.phoneNumber});
+  Map<String, dynamic> toJson() => {'phoneNumber': phoneNumber};
+}
+
+class VerifyOtpModel {
+  final String phoneNumber;
+  final String otp;
+  VerifyOtpModel({required this.phoneNumber, required this.otp});
+  Map<String, dynamic> toJson() => {'phoneNumber': phoneNumber, 'otp': otp};
+}
+
+class VerifyOtpResponse {
+  final String profileId;
+  final String token;
+  final String phoneNumber;
+  final bool phoneVerified;
+
+  VerifyOtpResponse({
+    required this.profileId,
+    required this.token,
+    required this.phoneNumber,
+    required this.phoneVerified,
+  });
+
+  factory VerifyOtpResponse.fromJson(Map<String, dynamic> json) {
+    // 🔑 LOGIC: If a token is present in the 200 OK response, verification is successful.
+    final bool verified = json['token'] != null && json['token'].toString().isNotEmpty;
+
+    return VerifyOtpResponse(
+      profileId: json['profileId'] ?? '',
+      token: json['token'] ?? '',
+      phoneNumber: json['phoneNumber'] ?? '',
+      phoneVerified: verified,
+    );
+  }
+}
+
+// --- LOGIN WIDGET ---
 
 class login extends StatefulWidget {
   const login({super.key});
@@ -20,7 +60,8 @@ class login extends StatefulWidget {
 }
 
 class _loginState extends State<login> {
-  String? backendOtp;
+  // State variables and controllers
+  String _sentPhoneNumber = '';
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
 
@@ -28,6 +69,19 @@ class _loginState extends State<login> {
   bool isSending = false;
   int resendTimer = 0;
   Timer? timer;
+
+  // 🔑 NEW STATE: Tracks if the current sequence is for Registration or Login
+  bool _isRegistering = false;
+
+  // 🔑 NEW ENDPOINTS
+  static const String _loginRequestUrl = "https://foxlchits.com/api/AuthPhoneUser/login-request-otp";
+  static const String _loginVerifyUrl = "https://foxlchits.com/api/AuthPhoneUser/verify-otp-login";
+
+  static const String _registerRequestUrl = "https://foxlchits.com/api/AuthPhoneUser/request-otp";
+  static const String _registerVerifyUrl = "https://foxlchits.com/api/AuthPhoneUser/verify-otp-register";
+
+  final storage = const FlutterSecureStorage();
+
 
   @override
   void sendOtp() async {
@@ -45,60 +99,58 @@ class _loginState extends State<login> {
 
     setState(() {
       isSending = true;
+      _isRegistering = false; // Start by assuming Login
     });
 
     try {
-      //  Create model object
       final requestBody = RequestOtpModel(phoneNumber: phone);
 
-      //  Make API call
-      final response = await http.post(
-        Uri.parse("https://foxlchits.com/api/AuthPhoneUser/request-otp"),
+      // 1. 🔍 ATTEMPT LOGIN REQUEST FIRST
+      var response = await http.post(
+        Uri.parse(_loginRequestUrl),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode(requestBody.toJson()), //  using model
+        body: jsonEncode(requestBody.toJson()),
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final demoOtp = data['otp'] ?? data['otpForDemo'];
-        if (demoOtp != null) {
-          print("🔹 TEST OTP: $demoOtp");
-          backendOtp = demoOtp.toString(); // store it for verification
-        } else {
-          print("⚠️ OTP not found in response: $data");
-        }
+        // ✅ SUCCESS: User is Registered, proceed to Login Verification
+        _handleOtpSuccess(response, phone, "Login");
 
-        // success
-        setState(() {
-          isOtpSent = true;
-          resendTimer = 30;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("OTP sent successfully to +91 $phone"),
-            backgroundColor: const Color(0xff07C66A),
-          ),
-        );
-
-        // start countdown
-        timer = Timer.periodic(const Duration(seconds: 1), (t) {
-          if (resendTimer == 0) {
-            t.cancel();
-          } else {
-            setState(() {
-              resendTimer--;
-            });
-          }
-        });
       } else {
-        // failure
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Failed to send OTP. Please try again."),
-            backgroundColor: Colors.redAccent,
-          ),
+        // ❌ FAILURE (Non-200): User is likely NOT Registered. Attempt to Register.
+        print("⚠ Login OTP failed (Status ${response.statusCode}). Attempting Registration...");
+
+        // 2. 📝 ATTEMPT REGISTRATION REQUEST
+        response = await http.post(
+          Uri.parse(_registerRequestUrl), // Request OTP for new user registration
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode(requestBody.toJson()),
         );
+
+        if (response.statusCode == 200) {
+          // ✅ SUCCESS: Registration OTP sent, proceed to Register Verification
+          setState(() {
+            _isRegistering = true; // Set flag for the verifyOtp function
+          });
+          _handleOtpSuccess(response, phone, "Registration");
+
+        } else {
+          // ❌ FAILURE: Registration failed (e.g., phone invalid or other server issue)
+          String errorMessage = "Failed to send OTP. Please try again.";
+          try {
+            final errorData = jsonDecode(response.body);
+            errorMessage = errorData['message'] ?? errorMessage;
+          } catch (e) {
+            // Response body was not JSON
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -111,17 +163,49 @@ class _loginState extends State<login> {
     }
   }
 
-  final storage = FlutterSecureStorage();
+  // Helper method to handle common success logic after OTP request
+  void _handleOtpSuccess(http.Response response, String phone, String mode) {
+    final data = jsonDecode(response.body);
+    final demoOtp = data['otp'] ?? data['otpForDemo'];
+    if (demoOtp != null) {
+      print("🔹 TEST OTP ($mode): $demoOtp");
+    }
+
+    setState(() {
+      isOtpSent = true;
+      _sentPhoneNumber = phone; // Store the phone number
+      resendTimer = 30;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("OTP sent successfully for $mode to +91 $phone"),
+        backgroundColor: const Color(0xff07C66A),
+      ),
+    );
+
+    // Start countdown
+    timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (resendTimer == 0) {
+        t.cancel();
+      } else {
+        setState(() {
+          resendTimer--;
+        });
+      }
+    });
+  }
 
   void verifyOtp() async {
     FocusScope.of(context).unfocus();
     final enteredOtp = _otpController.text.trim();
-    final phone = _phoneController.text.trim();
+    // Use the stored phone number from the send request
+    final phone = _sentPhoneNumber.isNotEmpty ? _sentPhoneNumber : _phoneController.text.trim();
 
-    if (enteredOtp.isEmpty) {
+    if (enteredOtp.isEmpty || phone.length != 10) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Please enter OTP"),
+          content: Text("Please send and enter a valid OTP"),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -131,10 +215,12 @@ class _loginState extends State<login> {
     try {
       final verifyBody = VerifyOtpModel(phoneNumber: phone, otp: enteredOtp);
 
+      // Determine which API to call based on the flag set in sendOtp()
+      final String verificationUrl = _isRegistering ? _registerVerifyUrl : _loginVerifyUrl;
+      final String successType = _isRegistering ? "Registration" : "Login";
+
       final response = await http.post(
-        Uri.parse(
-          "https://foxlchits.com/api/AuthPhoneUser/verify-otp-register",
-        ),
+        Uri.parse(verificationUrl),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(verifyBody.toJson()),
       );
@@ -144,51 +230,56 @@ class _loginState extends State<login> {
           jsonDecode(response.body),
         );
 
+        // Since the model verifies success by token presence in a 200 OK response,
+        // we can safely proceed.
         if (verifyResponse.phoneVerified) {
-          // ✅ Save details securely for later use
-          await storage.write(
-            key: 'profileId',
-            value: verifyResponse.profileId,
-          );
+          // ✅ Save details securely
+          await storage.write(key: 'profileId', value: verifyResponse.profileId);
           await storage.write(key: 'token', value: verifyResponse.token);
-          await storage.write(
-            key: 'phoneNumber',
-            value: verifyResponse.phoneNumber,
-          );
-
-          // After phone OTP verification:
+          await storage.write(key: 'phoneNumber', value: verifyResponse.phoneNumber);
           await storage.write(key: 'loginType', value: 'phone');
-
-          // After email login:
-          await storage.write(key: 'loginType', value: 'email');
 
           print('✅ Profile ID Saved: ${verifyResponse.profileId}');
           print('✅ Token Saved: ${verifyResponse.token}');
 
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("OTP Verified Successfully"),
-              backgroundColor: Color(0xff07C66A),
+            SnackBar(
+              content: Text("$successType Successful!"),
+              backgroundColor: const Color(0xff07C66A),
             ),
           );
 
           // ✅ Navigate to Home
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => HomeLayout()),
+            MaterialPageRoute(builder: (_) => const HomeLayout()),
           );
         } else {
+          // This case should ideally not be hit with the current API response logic,
+          // but included as a safeguard.
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("OTP verification failed"),
+              content: Text("Verification failed despite 200 OK."),
               backgroundColor: Colors.redAccent,
             ),
           );
         }
       } else {
+        // ❌ Non-200 Status Code Error Handling (Invalid OTP, Expired, etc.)
+        print("🚨 Verification Failed Status Code: ${response.statusCode}");
+        print("🚨 Verification Failed Response Body: ${response.body}");
+
+        String errorMessage = "Invalid OTP for $successType. Please try again.";
+        try {
+          final errorData = jsonDecode(response.body);
+          errorMessage = errorData['message'] ?? errorData['error'] ?? errorMessage;
+        } catch (e) {
+          // If response body is not JSON, use the default message
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Invalid OTP. Please try again."),
+          SnackBar(
+            content: Text(errorMessage),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -210,25 +301,99 @@ class _loginState extends State<login> {
     _otpController.dispose();
     super.dispose();
   }
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email', 'profile'],
-    serverClientId: '634781175675-9sr37dl784o2r8dckmd2ie9hnrsvm5e4.apps.googleusercontent.com', // 👈 Web Client ID
-  );
-  Future<void> handleGoogleSignIn() async {
+  Future<void> signInWithGoogle() async {
     try {
-      final GoogleSignInAccount? account = await _googleSignIn.signIn();
-      if (account == null) return;
+      // ✅ Your Web Client ID from Firebase Console
+      const String webClientId =
+          '634781175675-9sr37dl784o2r8dckmd2ie9hnrsvm5e4.apps.googleusercontent.com';
 
-      final GoogleSignInAuthentication auth = await account.authentication;
-      final idToken = auth.idToken;
+      // 1️⃣ Trigger Google Sign-In
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        scopes: ['email', 'profile'],
+        serverClientId: webClientId,
+      );
 
-      print('ID Token: $idToken');
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) return; // user cancelled
+
+      // 2️⃣ Get Google Auth info
+      final GoogleSignInAuthentication googleAuth =
+      await googleUser.authentication;
+
+      // 3️⃣ Create Firebase credential
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // 4️⃣ Sign in to Firebase using the Google credentials
+      final UserCredential userCredential =
+      await FirebaseAuth.instance.signInWithCredential(credential);
+      final User? user = userCredential.user;
+
+      if (user == null) throw Exception("Firebase login failed");
+
+      // 5️⃣ Get Firebase ID Token
+      final idToken = await user.getIdToken();
+
+      developer.log("🔥 Firebase ID Token: $idToken", name: "GoogleSignIn");
+
+      print("👤 Logged in as: ${user.displayName}, ${user.email}");
+
+      // 6️⃣ Send Firebase token to your ASP.NET backend
+      final response = await http.get(
+        Uri.parse("http://192.168.1.105:5155/api/FirebaseLogin/google-profile"),
+        headers: {
+          "Authorization": "Bearer $idToken",
+          "Content-Type": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print("✅ Backend Response: $data");
+
+        // 7️⃣ Optionally save backend data securely
+        await storage.write(key: 'loginType', value: 'google');
+        await storage.write(key: 'profileId', value: user.uid);
+        await storage.write(key: 'email', value: user.email ?? '');
+        await storage.write(key: 'name', value: user.displayName ?? '');
+        await storage.write(key: 'photoUrl', value: user.photoURL ?? '');
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Signed in with Google successfully"),
+            backgroundColor: Color(0xff07C66A),
+          ),
+        );
+
+        // 8️⃣ Navigate to Home
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => HomeLayout()),
+        );
+      } else {
+        print("❌ Backend Error: ${response.body}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Backend login failed: ${response.body}"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     } catch (e) {
-      print('Google sign-in error:$e');
+      print("❌ Error signing in: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Sign-In failed: $e"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
   @override
   Widget build(BuildContext context) {
+    // ... (Your existing UI code remains the same)
     Size size = MediaQuery.of(context).size;
     return Scaffold(
       backgroundColor: Colors.black,
@@ -264,6 +429,7 @@ class _loginState extends State<login> {
                     controller: _phoneController,
                     keyboardType: TextInputType.number,
                     maxLength: 10,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: InputDecoration(
                       suffixIcon: GestureDetector(
                         onTap: (isSending || resendTimer > 0)
@@ -334,6 +500,7 @@ class _loginState extends State<login> {
                   child: TextField(
                     controller: _otpController,
                     keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: InputDecoration(
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -342,7 +509,7 @@ class _loginState extends State<login> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       filled: true,
-                      fillColor: Color(0xffCFCFCF),
+                      fillColor: const Color(0xffCFCFCF),
                       counterText: "",
                       border: InputBorder.none,
                       hintText: "Enter OTP",
@@ -365,9 +532,7 @@ class _loginState extends State<login> {
                 Align(
                   alignment: Alignment.bottomRight,
                   child: GestureDetector(
-                    onTap: () {
-                      verifyOtp();
-                    },
+                    onTap: verifyOtp, // Calls the verification function
 
                     child: Container(
                       width: 52,
@@ -377,8 +542,8 @@ class _loginState extends State<login> {
                         color: const Color(0xFF686763),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Center(
-                        child: const Icon(
+                      child: const Center(
+                        child: Icon(
                           Icons.arrow_forward_ios_rounded,
                           color: Color(0xffFFFFFF),
                           size: 18,
@@ -391,7 +556,9 @@ class _loginState extends State<login> {
 
                 // 🔹 Continue with Google Button
                 GestureDetector(
-                  onTap: handleGoogleSignIn,
+                  onTap: () {
+                    signInWithGoogle();
+                  },
                   child: Container(
                     width: double.infinity,
                     height: 51,

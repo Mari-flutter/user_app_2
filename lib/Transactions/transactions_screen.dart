@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:user_app/Transactions/referals.dart';
 import 'package:user_app/Transactions/transaction_history.dart';
 
 import 'contribution_screen.dart';
@@ -31,13 +30,12 @@ class _transactionsState extends State<transactions> {
     widget.onTabChange?.call(index);
   }
 
-  final List<String> chitTypeTags = ["History", "Contibution", "Referals"];
+  final List<String> chitTypeTags = ["History", "Contibution"];
 
   // 🔹 Widget list for each tab
   late final List<Widget> pages = [
     const transactions_history(),
     const contribution(),
-    const referals(),
   ];
 
   @override

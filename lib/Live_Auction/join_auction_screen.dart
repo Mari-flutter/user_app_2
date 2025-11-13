@@ -8,6 +8,8 @@ import '../Models/My_Chits/active_chits_model.dart';
 import '../Services/secure_storage.dart';
 import '../Services/websocket_service.dart';
 import 'auction_screen.dart';
+import 'package:shimmer/shimmer.dart';
+
 
 class join_auction extends StatefulWidget {
   const join_auction({super.key});
@@ -25,6 +27,7 @@ class _join_auctionState extends State<join_auction> {
   bool canJoinNow = false;
   String formattedCountdown = '';
   String? currentChitId;
+  String? joiningChitId;
 
 
   String? userName;
@@ -149,6 +152,8 @@ class _join_auctionState extends State<join_auction> {
 
   Future<void> _joinAuction(ActiveChit chit) async {
     if (currentChitId != null && currentChitId == chit.id) {
+      String msg = "Already joined this chit Auction please wait untill the countdown will start";
+      _showSnackBar(msg);
       print("⚠️ Already joined this chit — skipping duplicate join");
       return;
     }
@@ -157,6 +162,9 @@ class _join_auctionState extends State<join_auction> {
       _showSnackBar('Missing user data');
       return;
     }
+    setState(() {
+      joiningChitId = chit.id; // Set the ID of the chit we are joining/waiting for
+    });
 
     final chitId = chit.id;
     final normalizedChitId = chitId.trim().toLowerCase();
@@ -208,6 +216,67 @@ class _join_auctionState extends State<join_auction> {
     // ❌ Do NOT close socket here (it’s shared)
     super.dispose();
   }
+  Widget _buildShimmerCard(Size size) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade900.withOpacity(0.25),
+      highlightColor: Colors.grey.shade700.withOpacity(0.4),
+      period: const Duration(seconds: 2),
+      child: Container(
+        width: double.infinity,
+        height: 220,
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(
+            color: const Color(0xff1B3977).withOpacity(0.5),
+            width: 0.5,
+          ),
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xff1C2A48), // darker top
+              Color(0xff0D111A), // almost black bottom
+            ],
+          ),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(size.height * 0.02),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(height: 14, width: 120, color: Colors.grey.shade800), // title
+              SizedBox(height: size.height * 0.02),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(height: 20, width: 100, color: Colors.grey.shade800), // amount
+                  Container(height: 15, width: 60, color: Colors.grey.shade800), // chit type
+                ],
+              ),
+              SizedBox(height: size.height * 0.03),
+              Container(height: 10, width: 180, color: Colors.grey.shade800),
+              SizedBox(height: size.height * 0.03),
+              Container(height: 10, width: 220, color: Colors.grey.shade800),
+              const Spacer(),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Container(
+                  height: 28,
+                  width: 120,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(7),
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -218,79 +287,72 @@ class _join_auctionState extends State<join_auction> {
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.all(size.height * 0.02),
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
-            children: [
-              Row(
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: GestureDetector(
-                      onTap: () => Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const HomeLayout(),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 500),
+            child: _isLoading
+                ? Column(
+              children: [
+                SizedBox(height: size.height * 0.02),
+                _buildShimmerCard(size),
+                _buildShimmerCard(size),
+                _buildShimmerCard(size),
+              ],
+            )
+                : Column(
+              children: [
+                Row(
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: GestureDetector(
+                        onTap: () => Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const HomeLayout(),
+                          ),
+                        ),
+                        child: Image.asset(
+                          'assets/images/My_Chits/back_arrow.png',
+                          width: 24,
+                          height: 24,
                         ),
                       ),
-                      child: Image.asset(
-                        'assets/images/My_Chits/back_arrow.png',
-                        width: 24,
-                        height: 24,
-                      ),
                     ),
-                  ),
-                  SizedBox(width: size.width * 0.02),
-                  Text(
-                    'Join Live Auction',
-                    style: GoogleFonts.urbanist(
-                      textStyle: const TextStyle(
-                        color: Color(0xffFFFFFF),
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: size.height * 0.02),
-              if (auctionStatusMessage.isNotEmpty)
-                Container(
-                  width: double.infinity,
-                  height: 43,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(11),
-                    gradient: LinearGradient(colors: [Color(0xff3A7AFF),Color(0xff001648),Color(0xff3A7AFF)])
-                  ),
-                  child: Center(
-                    child: Text(
-                      auctionStatusMessage,
+                    SizedBox(width: size.width * 0.02),
+                    Text(
+                      'Join Live Auction',
                       style: GoogleFonts.urbanist(
-                        color: Color(0xffFFFFFF),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        textStyle: const TextStyle(
+                          color: Color(0xffFFFFFF),
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
+                  ],
+                ),
+                SizedBox(height: size.height * 0.02),
+                if (auctionStatusMessage.isNotEmpty)
+                  AnimatedGradientBorder(text: auctionStatusMessage),
+                SizedBox(height: size.height * 0.02),
+                Expanded(
+                  child: allChits.isEmpty
+                      ? const Center(
+                    child: Text(
+                      "No active chits available.",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  )
+                      : ListView.builder(
+                    itemCount: allChits.length,
+                    itemBuilder: (context, index) {
+                      final chit = allChits[index];
+                      return _buildChitCard(chit, size);
+                    },
                   ),
                 ),
-              SizedBox(height: size.height * 0.02),
-              Expanded(
-                child: allChits.isEmpty
-                    ? const Center(
-                  child: Text(
-                    "No active chits available.",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                )
-                    : ListView.builder(
-                  itemCount: allChits.length,
-                  itemBuilder: (context, index) {
-                    final chit = allChits[index];
-                    return _buildChitCard(chit, size);
-                  },
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -298,6 +360,7 @@ class _join_auctionState extends State<join_auction> {
   }
 
   Widget _buildChitCard(ActiveChit chit, Size size) {
+    final isWaitingToJoin = joiningChitId == chit.id;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Container(
@@ -405,9 +468,9 @@ class _join_auctionState extends State<join_auction> {
               SizedBox(height: size.height * 0.1),
               Center(
                 child: GestureDetector(
-                  onTap:  () => _joinAuction(chit) ,
+                  onTap: isWaitingToJoin ? null : () => _joinAuction(chit),
                   child: Text(
-                    "Join Auction >",
+                      isWaitingToJoin ? "Please Wait..." : "Join Auction >",
                     style: GoogleFonts.urbanist(
                       textStyle: TextStyle(
                         fontSize: 15,
@@ -430,6 +493,81 @@ class _join_auctionState extends State<join_auction> {
           ),
         ),
       ),
+    );
+  }
+}
+class AnimatedGradientBorder extends StatefulWidget {
+  final String text;
+
+  const AnimatedGradientBorder({super.key, required this.text});
+
+  @override
+  State<AnimatedGradientBorder> createState() => _AnimatedGradientBorderState();
+}
+
+class _AnimatedGradientBorderState extends State<AnimatedGradientBorder>
+    with SingleTickerProviderStateMixin {
+
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: 4),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          width: double.infinity,
+          height: 43,
+          padding: EdgeInsets.all(2), // Border thickness
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(11),
+            gradient: SweepGradient(
+              colors: [
+                Color(0xff000000),
+                Color(0xff001648),
+                Color(0xff3A7AFF),
+              ],
+              stops: [0.0, 0.5, 1.0],
+              transform: GradientRotation(_controller.value * 6.28),
+            ),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [
+                Color(0xff0E0E0E),
+                Color(0xff101010),
+              ]),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Center(
+              child: Text(
+                widget.text,
+                style: GoogleFonts.urbanist(
+                  color: Color(0xffFFFFFF),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

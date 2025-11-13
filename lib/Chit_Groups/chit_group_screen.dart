@@ -22,18 +22,6 @@ class chit_groups extends StatefulWidget {
   State<chit_groups> createState() => _chit_groupsState();
 }
 
-Future<List<Chit_Group_Model>> fetchChits() async {
-  final url = Uri.parse('https://foxlchits.com/api/MainBoard/ChitsCreate/all');
-  final response = await http.get(url);
-
-  if (response.statusCode == 200) {
-    final List<dynamic> data = jsonDecode(response.body);
-    return data.map((e) => Chit_Group_Model.fromJson(e)).toList();
-  } else {
-    throw Exception('Failed to load chits');
-  }
-}
-
 class _chit_groupsState extends State<chit_groups> {
   bool isKycLoading = true;
   bool isKycCompleted = false;
@@ -81,31 +69,25 @@ class _chit_groupsState extends State<chit_groups> {
     _loadChitsWithCache();
   }
 
-  // ✅ 1. Load from Hive cache instantly (if exists)
   Future<void> _loadChitsWithCache() async {
-    final cached = LocalStorageManager.getChits();
-    if (cached != null && cached.isNotEmpty) {
-      print('📦 Loaded ${cached.length} chits from Hive cache');
+    final cached = LocalStorageManager.getActiveUpcomingChits();
+    if (cached.isNotEmpty) {
+      print('📦 Loaded ${cached.length} active-upcoming chits from Hive');
       setState(() {
         _chits = cached;
         _filteredChits = List.from(cached);
         _isLoadingChits = false;
       });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _handleHighlight();
-      });
       _refreshChitsInBackground();
     } else {
-      print('🌐 No cache found, fetching from API...');
       await _fetchChitsFromApi();
     }
   }
 
-  // ✅ 2. Fetch and update Hive cache
   Future<void> _fetchChitsFromApi() async {
     try {
       final url = Uri.parse(
-        'https://foxlchits.com/api/MainBoard/ChitsCreate/all',
+        'https://foxlchits.com/api/MainBoard/ChitsCreate/active-upcoming',
       );
       final response = await http.get(url);
 
@@ -113,8 +95,7 @@ class _chit_groupsState extends State<chit_groups> {
         final List<dynamic> data = jsonDecode(response.body);
         final chits = data.map((e) => Chit_Group_Model.fromJson(e)).toList();
 
-        // Save to Hive for offline use
-        await LocalStorageManager.saveChits(chits);
+        await LocalStorageManager.saveActiveUpcomingChits(chits);
 
         setState(() {
           _chits = chits;
@@ -122,19 +103,13 @@ class _chit_groupsState extends State<chit_groups> {
           _isLoadingChits = false;
         });
 
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _handleHighlight();
-        });
-
-        print('✅ Fetched & cached ${chits.length} chits');
-
-        _handleHighlight(); // new
+        print('✅ Active-Upcoming Chits fetched & cached (${chits.length})');
       } else {
         print('❌ API Error: ${response.statusCode}');
         setState(() => _isLoadingChits = false);
       }
     } catch (e) {
-      print("⚠️ Error loading chits: $e");
+      print('⚠️ Error fetching chits: $e');
       setState(() => _isLoadingChits = false);
     }
   }
@@ -142,14 +117,14 @@ class _chit_groupsState extends State<chit_groups> {
   Future<void> _refreshChitsInBackground() async {
     try {
       final url = Uri.parse(
-        'https://foxlchits.com/api/MainBoard/ChitsCreate/all',
+        'https://foxlchits.com/api/MainBoard/ChitsCreate/active-upcoming',
       );
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         final chits = data.map((e) => Chit_Group_Model.fromJson(e)).toList();
-        await LocalStorageManager.saveChits(chits);
-        print('🔄 Cache updated in background (${chits.length} chits)');
+        await LocalStorageManager.saveActiveUpcomingChits(chits);
+        print('🔄 Background cache refreshed (${chits.length} chits)');
       }
     } catch (e) {
       print('⚠️ Background refresh failed: $e');
@@ -218,12 +193,7 @@ class _chit_groupsState extends State<chit_groups> {
     }
   }
 
-  final List<String> chitTypeTags = [
-    "All Chits",
-    "Daily",
-    "Weekly",
-    "Monthly",
-  ];
+  final List<String> chitTypeTags = ["All Chits", "Daily", "Weekly", "Monthly"];
 
   Future<void> _requestToJoinChit(String chitId) async {
     try {
@@ -296,121 +266,132 @@ class _chit_groupsState extends State<chit_groups> {
 
     return Scaffold(
       backgroundColor: const Color(0xff000000),
-      body: SingleChildScrollView(
-        child: SafeArea(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(height: size.height * 0.02),
-                Text(
-                  'Chit Groups',
-                  style: GoogleFonts.urbanist(
-                    textStyle: const TextStyle(
-                      color: Color(0xffFFFFFF),
-                      fontSize: 22,
-                      fontWeight: FontWeight.w500,
+      body: SafeArea(
+        child: RefreshIndicator(
+          color: Colors.white,
+          backgroundColor: const Color(0xff3A7AFF),
+          onRefresh: () async {
+            await _fetchChitsFromApi(); // 👈 Pull-to-refresh triggers live API
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(), // 👈 makes pull work even if content < screen height
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: size.height * 0.02),
+                  Text(
+                    'Chit Groups',
+                    style: GoogleFonts.urbanist(
+                      textStyle: const TextStyle(
+                        color: Color(0xffFFFFFF),
+                        fontSize: 22,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(height: size.height * 0.04),
+                  SizedBox(height: size.height * 0.04),
 
-                // 🔹 Chips
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: List.generate(chitTypeTags.length, (index) {
-                      final bool isSelected = _selectedIndex == index;
-                      return GestureDetector(
-                        onTap: () => _onItemTapped(index),
-                        child: Container(
-                          height: 25,
-                          margin: const EdgeInsets.only(right: 13),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? const Color(0xff3A7AFF).withOpacity(0.76)
-                                : const Color(0xff262626).withOpacity(0.76),
-                            borderRadius: BorderRadius.circular(11),
-                          ),
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: size.width * 0.02,
-                              vertical: size.height * 0.003,
+                  // 🔹 Filter Chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: List.generate(chitTypeTags.length, (index) {
+                        final bool isSelected = _selectedIndex == index;
+                        return GestureDetector(
+                          onTap: () => _onItemTapped(index),
+                          child: Container(
+                            height: 25,
+                            margin: const EdgeInsets.only(right: 13),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? const Color(0xff3A7AFF).withOpacity(0.76)
+                                  : const Color(0xff262626).withOpacity(0.76),
+                              borderRadius: BorderRadius.circular(11),
                             ),
-                            child: Text(
-                              chitTypeTags[index],
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xffFFFFFF),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: size.width * 0.02,
+                                vertical: size.height * 0.003,
+                              ),
+                              child: Text(
+                                chitTypeTags[index],
+                                style: GoogleFonts.urbanist(
+                                  textStyle: const TextStyle(
+                                    color: Color(0xffFFFFFF),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    }),
+                        );
+                      }),
+                    ),
                   ),
-                ),
 
-                SizedBox(height: size.height * 0.025),
-                if (_isLoadingChits)
-                  Column(
-                    children: List.generate(5, (index) {
-                      return Shimmer.fromColors(
-                        baseColor: const Color(0xff2A2A2A),
-                        highlightColor: const Color(0xff3A3A3A),
-                        child: Container(
-                          width: double.infinity,
-                          height: size.height * 0.22,
-                          margin: EdgeInsets.only(bottom: size.height * 0.02),
-                          decoration: BoxDecoration(
-                            color: const Color(0xff2A2A2A),
-                            borderRadius: BorderRadius.circular(25),
+                  SizedBox(height: size.height * 0.025),
+
+                  // 🔹 Shimmer / Empty / Chit List
+                  if (_isLoadingChits)
+                    Column(
+                      children: List.generate(5, (index) {
+                        return Shimmer.fromColors(
+                          baseColor: const Color(0xff2A2A2A),
+                          highlightColor: const Color(0xff3A3A3A),
+                          child: Container(
+                            width: double.infinity,
+                            height: size.height * 0.22,
+                            margin: EdgeInsets.only(bottom: size.height * 0.02),
+                            decoration: BoxDecoration(
+                              color: const Color(0xff2A2A2A),
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                          ),
+                        );
+                      }),
+                    )
+                  else if (_filteredChits == null || _filteredChits!.isEmpty)
+                    Padding(
+                      padding: EdgeInsets.only(top: size.width * 0.7),
+                      child: Center(
+                        child: Text(
+                          'No chits available right now.',
+                          style: GoogleFonts.urbanist(
+                            color: Colors.white70,
+                            fontSize: 14,
                           ),
                         ),
-                      );
-                    }),
-                  )
-                else if (_filteredChits == null || _filteredChits!.isEmpty)
-                  Padding(
-                    padding: EdgeInsets.only(top: size.width * 0.7),
-                    child: Center(
-                      child: Text(
-                        'No chits available right now.',
-                        style: GoogleFonts.urbanist(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
                       ),
-                    ),
-                  )
-                else
-                  Column(
-                    children: _filteredChits!.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final chit = entry.value;
+                    )
+                  else
+                    Column(
+                      children: _filteredChits!.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final chit = entry.value;
 
-                      return Padding(
-                        padding: EdgeInsets.only(bottom: size.height * 0.02),
-                        child: ChitCardDynamic(
-                          chit: chit,
-                          isHighlighted: _highlightChitIndex == index,
-                          isKycCompleted: isKycCompleted,
-                          isKycLoading: isKycLoading,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-              ],
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: size.height * 0.02),
+                          child: ChitCardDynamic(
+                            chit: chit,
+                            isHighlighted: _highlightChitIndex == index,
+                            isKycCompleted: isKycCompleted,
+                            isKycLoading: isKycLoading,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
+
 }
 
 String getNextAuctionDate(List<dynamic> auctionDates) {
@@ -419,36 +400,49 @@ String getNextAuctionDate(List<dynamic> auctionDates) {
   DateTime now = DateTime.now();
   List<DateTime> parsedDates = [];
 
-  // Parse and filter valid dates
+  // Handle both plain dates and objects like upcomingAuctions
   for (var d in auctionDates) {
     try {
-      parsedDates.add(DateTime.parse(d.toString()));
+      if (d is Map && d.containsKey('auctionDate')) {
+        // ✅ Only include if not completed
+        if (d['completed'] == false || d['completed'] == null) {
+          parsedDates.add(DateTime.parse(d['auctionDate'].toString()));
+        }
+      } else {
+        parsedDates.add(DateTime.parse(d.toString()));
+      }
     } catch (_) {}
   }
 
   if (parsedDates.isEmpty) return "N/A";
 
-  // Sort the dates
+  // Sort the dates in ascending order
   parsedDates.sort();
 
-  // Find next upcoming date (≥ today)
+  // ✅ Find the first upcoming auction date (≥ today)
   for (var date in parsedDates) {
     if (!date.isBefore(DateTime(now.year, now.month, now.day))) {
-      return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+      return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} "
+          "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
     }
   }
 
-  // If all are past, return the last one
-  DateTime lastDate = parsedDates.last;
+  // If all completed, return last available date
+  final lastDate = parsedDates.last;
   return "${lastDate.year}-${lastDate.month.toString().padLeft(2, '0')}-${lastDate.day.toString().padLeft(2, '0')}";
 }
 
-List<String> getAuctionStartEndDates(List<dynamic>? auctionDates) {
+List<String> getAuctionStartEndDates(
+  List<dynamic>? auctionDates,
+  String? dueDate,
+) {
+  // 🟦 1. Default empty return
   if (auctionDates == null || auctionDates.isEmpty) {
-    return ["", ""]; // nothing available
+    // Start date = dueDate (if exists), End date empty
+    return [dueDate ?? "", ""];
   }
 
-  // Parse all dates
+  // 🟦 2. Parse all auction dates safely
   List<DateTime> parsedDates = [];
   for (var d in auctionDates) {
     try {
@@ -456,18 +450,36 @@ List<String> getAuctionStartEndDates(List<dynamic>? auctionDates) {
     } catch (_) {}
   }
 
-  if (parsedDates.isEmpty) return ["", ""];
+  if (parsedDates.isEmpty) return [dueDate ?? "", ""];
 
-  // Sort dates
+  // 🟦 3. Sort dates
   parsedDates.sort();
 
-  // Format as yyyy-MM-dd
-  String start =
-      "${parsedDates.first.year}-${parsedDates.first.month.toString().padLeft(2, '0')}-${parsedDates.first.day.toString().padLeft(2, '0')}";
-  String end =
-      "${parsedDates.last.year}-${parsedDates.last.month.toString().padLeft(2, '0')}-${parsedDates.last.day.toString().padLeft(2, '0')}";
+  // 🟦 4. Take last auction date and add +1 month
+  DateTime lastDate = parsedDates.last;
+  DateTime endPlusOneMonth;
 
-  return [start, end];
+  // ✅ Safely handle month overflow (e.g., Jan 31 + 1 month → Feb 28)
+  if (lastDate.month == 12) {
+    endPlusOneMonth = DateTime(lastDate.year + 1, 1, lastDate.day);
+  } else {
+    int nextMonth = lastDate.month + 1;
+    int nextYear = lastDate.year;
+
+    // Handle shorter months
+    int day = lastDate.day;
+    int daysInNextMonth = DateTime(nextYear, nextMonth + 1, 0).day;
+    if (day > daysInNextMonth) day = daysInNextMonth;
+
+    endPlusOneMonth = DateTime(nextYear, nextMonth, day);
+  }
+
+  // 🟦 5. Format end date
+  String end =
+      "${endPlusOneMonth.year}-${endPlusOneMonth.month.toString().padLeft(2, '0')}-${endPlusOneMonth.day.toString().padLeft(2, '0')}";
+
+  // 🟦 6. Start = chit.duedate
+  return [dueDate ?? "", end];
 }
 
 class ChitCardDynamic extends StatelessWidget {
@@ -487,8 +499,12 @@ class ChitCardDynamic extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final dates = getAuctionStartEndDates(chit.auctionDates);
-
+    final dates = getAuctionStartEndDates(
+      chit.auctionDates,
+      chit.duedate is DateTime
+          ? (chit.duedate as DateTime).toIso8601String().split('T').first
+          : chit.duedate?.toString(),
+    );
     // ✅ Compute status dynamically
     bool isRequested = RequestedChitNotifier.isRequested(chit.chitsName);
     String status = isRequested ? "Requested" : "Request to Join";
@@ -499,11 +515,11 @@ class ChitCardDynamic extends StatelessWidget {
       duration: const Duration(milliseconds: 100),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(25),
-        gradient:  const LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [Color(0xff232323), Color(0xff383836)],
-              ),
+        gradient: const LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [Color(0xff232323), Color(0xff383836)],
+        ),
       ),
       child: Padding(
         padding: EdgeInsets.symmetric(
@@ -544,19 +560,10 @@ class ChitCardDynamic extends StatelessWidget {
             ),
             _buildInfoRow("Start Date : ${dates[0]}", "End Date : ${dates[1]}"),
             _buildInfoRow(
-              "Duration : ₹${chit.timePeriod.toStringAsFixed(0)}",
-              "Auction Date : ${getNextAuctionDate(chit.auctionDates)}",
-            ),
-            Text(
+              "Duration : ${chit.timePeriod.toStringAsFixed(0)}",
               'Total Members : ${chit.totalMember.toStringAsFixed(0)}',
-              style: GoogleFonts.urbanist(
-                color: Color(0xffF8F8F8),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
             ),
-            SizedBox(height: size.height * 0.008),
-
+            SizedBox(height: size.height * 0.025),
             Align(
               alignment: Alignment.bottomRight,
               child: GestureDetector(
@@ -577,12 +584,12 @@ class ChitCardDynamic extends StatelessWidget {
 
                   if (!isRequested) {
                     // ✅ Request the chit
-                    final parentState = context.findAncestorStateOfType<_chit_groupsState>();
+                    final parentState = context
+                        .findAncestorStateOfType<_chit_groupsState>();
                     if (parentState != null) {
                       await parentState._requestToJoinChit(chit.id);
                     }
                   }
-
                 },
 
                 child: Container(

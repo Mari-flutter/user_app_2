@@ -2,19 +2,72 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:user_app/Investments/Gold/gold_investment_screen.dart';
 
-import '../../Receipt_Generate/sell_gold_receipt.dart';
+import '../../../Receipt_Generate/sell_gold_receipt.dart';
+import '../../../Services/secure_storage.dart';
 
+class confirmation_receipt_for_buy_gold_now extends StatefulWidget {
+  final double goldAmount;
+  final double estimate;
+  final String format;
+  final double gstPercent;
+  final double serviceCharge;
+  final double totalGoldValue;
 
-class confirmation_receipt_for_sell_gold_now extends StatefulWidget {
-  const confirmation_receipt_for_sell_gold_now({super.key});
+  const confirmation_receipt_for_buy_gold_now({
+    super.key,
+    required this.goldAmount,
+    required this.estimate,
+    required this.format,
+    required this.gstPercent,
+    required this.serviceCharge,
+    required this.totalGoldValue,
+  });
 
   @override
-  State<confirmation_receipt_for_sell_gold_now> createState() =>
-      _confirmation_receipt_for_sell_gold_nowState();
+  State<confirmation_receipt_for_buy_gold_now> createState() =>
+      _confirmation_receipt_for_buy_gold_nowState();
 }
 
-class _confirmation_receipt_for_sell_gold_nowState
-    extends State<confirmation_receipt_for_sell_gold_now> {
+class _confirmation_receipt_for_buy_gold_nowState
+    extends State<confirmation_receipt_for_buy_gold_now> {
+  late String transactionDate;
+  String? userName;
+  String? UserId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileId();
+    final now = DateTime.now();
+    transactionDate =
+        "${now.day.toString().padLeft(2, '0')} ${_monthName(now.month)} ${now.year}";
+  }
+  Future<void> _loadProfileId() async {
+    final username = await SecureStorageService.getUserName();
+    final userId = await SecureStorageService.getUserId();
+    setState(() {
+      userName = username;
+      UserId = userId;
+    });
+  }
+  String _monthName(int month) {
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+    return months[month - 1];
+  }
+
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -35,7 +88,8 @@ class _confirmation_receipt_for_sell_gold_nowState
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => gold_investment(initialTab: 1),
+                            builder: (context) =>
+                                gold_investment(initialTab: 0),
                           ),
                         ); // This will go back to the existing get_physical_gold
                       },
@@ -93,7 +147,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                               ),
                             ),
                             Text(
-                              'Rajesh Kumar (#F02343)',
+                              '${userName} (${UserId})',
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffFFFFFF),
@@ -104,30 +158,15 @@ class _confirmation_receipt_for_sell_gold_nowState
                             ),
                           ],
                         ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Official Confirmation Receipt',
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xffFFFFFF),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                        Text(
+                          'Official Confirmation Receipt',
+                          style: GoogleFonts.urbanist(
+                            textStyle: const TextStyle(
+                              color: Color(0xffFFFFFF),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
                             ),
-                            Text(
-                              'Booking ID: #GOLD4257',
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xffFFFFFF),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ],
                     ),
@@ -149,7 +188,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                     padding: EdgeInsets.all(1),
                     child: Container(
                       width: double.infinity,
-                      height: 315,
+                      height: 320,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.only(
                           bottomRight: Radius.circular(11),
@@ -216,7 +255,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                                 height: size.height * 0.005,
                                               ),
                                               Text(
-                                                'Gold Sale Completed',
+                                                'Gold Buy Completed',
                                                 style: GoogleFonts.urbanist(
                                                   textStyle: const TextStyle(
                                                     color: Color(0xffFFFFFF),
@@ -226,7 +265,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                                 ),
                                               ),
                                               Text(
-                                                'Your online gold has been sold successfully. The proceeds\nwill be transferred to your account soon.',
+                                                'Your online gold has been purchased successfully.',
                                                 style: GoogleFonts.urbanist(
                                                   textStyle: const TextStyle(
                                                     color: Color(0xffCBA86F),
@@ -261,7 +300,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Booking Details',
+                                      'Purchased Details',
                                       style: GoogleFonts.urbanist(
                                         textStyle: const TextStyle(
                                           color: Color(0xffFFFFFF),
@@ -280,7 +319,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                               CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              'Transfer Mode',
+                                              'Format',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff6E6E6E),
@@ -290,7 +329,67 @@ class _confirmation_receipt_for_sell_gold_nowState
                                               ),
                                             ),
                                             Text(
-                                              'Online Credit',
+                                              '${widget.format}',
+                                              style: GoogleFonts.urbanist(
+                                                textStyle: const TextStyle(
+                                                  color: Color(0xff989898),
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            Text(
+                                              'Transaction Date',
+                                              style: GoogleFonts.urbanist(
+                                                textStyle: const TextStyle(
+                                                  color: Color(0xff6E6E6E),
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                            Text(
+                                              transactionDate,
+                                              style: GoogleFonts.urbanist(
+                                                textStyle: const TextStyle(
+                                                  color: Color(0xff989898),
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+
+                                    SizedBox(height: size.height * 0.01),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Purchased Amount',
+                                              style: GoogleFonts.urbanist(
+                                                textStyle: const TextStyle(
+                                                  color: Color(0xff6E6E6E),
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                            Text(
+                                              '₹ ${widget.goldAmount.toStringAsFixed(0)}',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
@@ -316,7 +415,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                               ),
                                             ),
                                             Text(
-                                              '10g',
+                                              "${widget.totalGoldValue.toStringAsFixed(2)} g",
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
@@ -329,7 +428,6 @@ class _confirmation_receipt_for_sell_gold_nowState
                                         ),
                                       ],
                                     ),
-
                                     SizedBox(height: size.height * 0.01),
                                     Row(
                                       mainAxisAlignment:
@@ -340,7 +438,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                               CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              'Transaction Date:',
+                                              'GST',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff6E6E6E),
@@ -350,7 +448,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                               ),
                                             ),
                                             Text(
-                                              '11 November 2025',
+                                              '${widget.gstPercent.toStringAsFixed(0)} %',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
@@ -366,7 +464,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                               CrossAxisAlignment.end,
                                           children: [
                                             Text(
-                                              'Store Contact',
+                                              'Service Charge',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff6E6E6E),
@@ -376,7 +474,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                               ),
                                             ),
                                             Text(
-                                              '+91 80 6789 5432',
+                                              "₹ ${widget.serviceCharge.toStringAsFixed(0)}",
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
@@ -389,28 +487,6 @@ class _confirmation_receipt_for_sell_gold_nowState
                                         ),
                                       ],
                                     ),
-
-                                    SizedBox(height: size.height * 0.01),
-                                    Text(
-                                      'Credit Timeline:',
-                                      style: GoogleFonts.urbanist(
-                                        textStyle: const TextStyle(
-                                          color: Color(0xff6E6E6E),
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                    Text(
-                                      'Within 3 working days from the date of sale',
-                                      style: GoogleFonts.urbanist(
-                                        textStyle: const TextStyle(
-                                          color: Color(0xff989898),
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
                                   ],
                                 ),
                               ),
@@ -421,7 +497,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                     ),
                   ),
                 ),
-                SizedBox(height: size.height * 0.06),
+                SizedBox(height: size.height * 0.04),
                 Row(
                   children: [
                     SizedBox(width: size.width * 0.02),
@@ -444,7 +520,8 @@ class _confirmation_receipt_for_sell_gold_nowState
                   ],
                 ),
                 SizedBox(height: size.height * 0.03),
-                GestureDetector(onTap:  () async {
+                GestureDetector(
+                  onTap: () async {
                     await GoldSellReceiptPDF(context, {
                       'bookingId': '#GOLD4257',
                       'customerName': 'Thanish Prakash',

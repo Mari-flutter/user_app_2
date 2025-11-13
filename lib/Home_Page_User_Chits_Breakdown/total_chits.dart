@@ -1,59 +1,136 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../Models/User_chit_breakdown/user_chit_breakdown_model.dart';
+import 'package:shimmer/shimmer.dart';
 
-class TotalChitsPage extends StatelessWidget {
-  const TotalChitsPage({super.key});
+class TotalChitsPage extends StatefulWidget {
+  final List<Chit> chitList;
+  const TotalChitsPage({super.key, required this.chitList});
 
-  final List<Map<String, dynamic>> chitList = const [
-    {
-      "title": "₹2 Lakh Chit",
-      "type": "Monthly",
-      "value": "2,00,000/-",
-      "contribution": "10,000/-",
-      "totalMembers": "20",
-      "addedMembers": "08",
-      "startDate": "05-11-2025",
-      "endDate": "05-03-2027",
-      "duration": "20 Months",
-      "auctionDate": "05-12-2025",
-    },
-    {
-      "title": "₹4 Lakh Chit",
-      "type": "Weekly",
-      "value": "4,00,000/-",
-      "contribution": "20,000/-",
-      "totalMembers": "10",
-      "addedMembers": "09",
-      "startDate": "06-12-2025",
-      "endDate": "06-12-2026",
-      "duration": "10 Months",
-      "auctionDate": "06-01-2026",
-    },
-  ];
+  @override
+  State<TotalChitsPage> createState() => _TotalChitsPageState();
+}
+class _TotalChitsPageState extends State<TotalChitsPage> {
+  late List<Chit> chits;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadChits();
+  }
+
+  Future<void> _loadChits() async {
+    setState(() => isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 800)); // simulate short delay
+    setState(() {
+      chits = widget.chitList;
+      isLoading = false;
+    });
+  }
+
+  Future<void> _refreshChits() async {
+    await _loadChits(); // reload data (or from API later)
+  }
+
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
-    return Column(
-      children: chitList.map((chit) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: size.height * 0.02),
-          child: ChitCard(chit: chit),
-        );
-      }).toList(),
+    return SafeArea(
+      child: RefreshIndicator(
+        onRefresh: _refreshChits,
+        color: Colors.white,
+        backgroundColor: const Color(0xff3A7AFF),
+        child: LayoutBuilder(
+            builder: (context, constraints){
+             return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: isLoading
+                ? _buildShimmerLoader(size)
+                : chits.isEmpty
+                ? Padding(
+              padding: EdgeInsets.only(top: size.height * 0.35),
+              child: Center(
+                child: Text(
+                  "No chits found 😄",
+                  style: GoogleFonts.urbanist(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            )
+                : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: size.height * 0.01),
+                Column(
+                  children: chits.map((chit) {
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: size.height * 0.02),
+                      child: ChitCard(chit: chit),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          );}
+        ),
+      ),
+    );
+  }
+  Widget _buildShimmerLoader(Size size) {
+    return Shimmer.fromColors(
+      baseColor: const Color(0xff2E2E2E),
+      highlightColor: const Color(0xff4A4A4A),
+      child: Column(
+        children: List.generate(3, (index) {
+          return Padding(
+            padding: EdgeInsets.only(bottom: size.height * 0.02),
+            child: Container(
+              width: double.infinity,
+              height: size.height * 0.18,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(25),
+              ),
+            ),
+          );
+        }),
+      ),
     );
   }
 }
 
 class ChitCard extends StatelessWidget {
-  final Map<String, dynamic> chit;
+  final Chit chit;
 
   const ChitCard({super.key, required this.chit});
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+
+    // ✅ Start date = chit.duedate
+    final DateTime startDate = _parseDate(chit.duedate);
+
+    // ✅ End date = duedate + (timePeriod - 1) months
+    final DateTime endDate = _addMonths(startDate, chit.timePeriod - 1);
+
+    // ✅ Auction date logic:
+    // Take first auction where completed == false
+    String auctionDate = "Completed";
+    if (chit.auctionSchedules.isNotEmpty) {
+      for (var auction in chit.auctionSchedules) {
+        if (auction.completed == false) {
+          auctionDate = _formatDateString(auction.auctionDate);
+          break;
+        }
+      }
+    }
 
     return Container(
       width: double.infinity,
@@ -72,26 +149,22 @@ class ChitCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title Row
+          // 🔹 Header Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                chit["title"],
+                chit.chitsName,
                 style: GoogleFonts.urbanist(
                   color: const Color(0xff3A7AFF),
-                  fontSize: 28,
+                  fontSize: 22,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
-                chit["type"],
+                chit.chitsType,
                 style: GoogleFonts.urbanist(
-                  color: chit["type"] == "Due Pending"
-                      ? Color(0xffC60F12)
-                      : chit["type"] == "Due Paid"
-                      ? Color(0xff03DF96)
-                      : Color(0xffB5B4B4),
+                  color: const Color(0xffB5B4B4),
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -100,30 +173,32 @@ class ChitCard extends StatelessWidget {
           ),
           SizedBox(height: size.height * 0.01),
 
+          // 🔹 Info Rows
           _buildInfoRow(
-            "Chit Value : ${chit["value"]}",
-            "Mon.Contribution : ${chit["contribution"]}",
+            "Chit Value : ₹${chit.value.toStringAsFixed(0)}",
+            "Mon.Contribution : ₹${chit.contribution.toStringAsFixed(0)}",
           ),
           _buildInfoRow(
-            "Total Members : ${chit["totalMembers"]}",
-            "Added Members : ${chit["addedMembers"]}",
+            "Total Members : ${chit.totalMember}",
+            "Added Members : ${chit.currentMemberCount}",
           ),
           _buildInfoRow(
-            "Start Date : ${chit["startDate"]}",
-            "End Date : ${chit["endDate"]}",
+            "Start Date : ${_formatDate(startDate)}",
+            "End Date : ${_formatDate(endDate)}",
           ),
           _buildInfoRow(
-            "Duration : ${chit["duration"]}",
-            "Auction Date : ${chit["auctionDate"]}",
+            "Duration : ${chit.timePeriod} Months",
+            "Auction Date : $auctionDate",
           ),
         ],
       ),
     );
   }
 
+  // 🔹 Info Row Widget
   Widget _buildInfoRow(String left, String right) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -146,5 +221,42 @@ class ChitCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // 🔹 Helper: Parse date safely
+  DateTime _parseDate(String? iso) {
+    if (iso == null || iso.isEmpty) return DateTime.now();
+    try {
+      return DateTime.parse(iso);
+    } catch (_) {
+      return DateTime.now();
+    }
+  }
+
+  // 🔹 Helper: Format DateTime → dd-MM-yyyy
+  String _formatDate(DateTime d) {
+    return "${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}";
+  }
+
+  // 🔹 Helper: Format ISO string → dd-MM-yyyy
+  String _formatDateString(String? iso) {
+    if (iso == null || iso.isEmpty) return '-';
+    try {
+      final dt = DateTime.parse(iso);
+      return _formatDate(dt);
+    } catch (_) {
+      return '-';
+    }
+  }
+
+  // 🔹 Helper: Add months to DateTime safely
+  DateTime _addMonths(DateTime date, int monthsToAdd) {
+    if (monthsToAdd <= 0) return date;
+    final int totalMonths = date.month + monthsToAdd;
+    final int newYear = date.year + ((totalMonths - 1) ~/ 12);
+    final int newMonth = ((totalMonths - 1) % 12) + 1;
+    final int lastDay = DateTime(newYear, newMonth + 1, 0).day;
+    final int newDay = date.day > lastDay ? lastDay : date.day;
+    return DateTime(newYear, newMonth, newDay);
   }
 }
