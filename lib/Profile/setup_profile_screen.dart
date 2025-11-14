@@ -20,25 +20,159 @@ class setup_profile extends StatefulWidget {
 }
 
 class _setup_profileState extends State<setup_profile> {
-  String? _fcmToken;
+
   bool isExpanded = false;
   Image? selected_Image;
   String? selectedValue;
   DateTime? _selectedDate;
-  final mobileController = TextEditingController();
-  final otpController = TextEditingController();
-  bool otpSent = false;
-  bool otpVerified = false;
-  bool emailVerified = false;
+
   final storage = FlutterSecureStorage();
+  String? _fcmToken;
   String? profileId; // to hold the stored id
-  String? loginType;
+  String signupType = "";
+
+  late Future<SetupProfile> profileFuture;
+
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final mobileController = TextEditingController();
+  final addressController = TextEditingController();
+
+  final phoneOtpController = TextEditingController();
+  final emailOtpController = TextEditingController();
+
+  bool phoneOtpSent = false;
+  bool phoneOtpVerified = false;
+  bool isSendingPhoneOtp = false;
+
+  bool emailOtpSent = false;
+  bool emailOtpVerified = false;
+  bool isSendingEmailOtp = false;
+
+  bool isVerifyingPhoneOtp = false;
+  bool isVerifyingEmailOtp = false;
+
 
   @override
   void initState() {
     super.initState();
     _getToken();
     _loadProfileId(); // call this first
+  }
+
+// ---------------- PHONE OTP ------------------
+
+  Future<void> requestPhoneOtp() async {
+    if (mobileController.text.isEmpty) return;
+
+    setState(() => isSendingPhoneOtp = true);
+
+    final url = Uri.parse(
+      "https://foxlchits.com/api/Profile/$profileId/request-phone-otp",
+    );
+
+    final body = {"phoneNumber": mobileController.text.trim()};
+
+    final response = await http.post(url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(body));
+
+    setState(() => isSendingPhoneOtp = false);
+
+    if (response.statusCode == 200) {
+      phoneOtpSent = true;
+      setState(() {});
+      _showMessage("Phone OTP Sent");
+    } else {
+      _showMessage("Phone OTP Failed");
+    }
+  }
+
+  Future<void> verifyPhoneOtp() async {
+    setState(() => isVerifyingPhoneOtp = true);
+
+    final url = Uri.parse(
+      "https://foxlchits.com/api/Profile/$profileId/verify-phone-otp",
+    );
+
+    final body = {
+      "phoneNumber": mobileController.text.trim(),
+      "otp": phoneOtpController.text.trim()
+    };
+
+    final response = await http.post(url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(body));
+
+    setState(() => isVerifyingPhoneOtp = false);
+
+    if (response.statusCode == 200) {
+      phoneOtpVerified = true;
+      setState(() {});
+      _showMessage("Phone Verified");
+    } else {
+      _showMessage("Invalid Phone OTP");
+    }
+  }
+
+  // ---------------- EMAIL OTP ------------------
+  Future<void> requestEmailOtp() async {
+    if (emailController.text.isEmpty) return;
+
+    setState(() => isSendingEmailOtp = true);
+
+    final url = Uri.parse(
+      "https://foxlchits.com/api/Profile/$profileId/request-email-otp",
+    );
+
+    final body = {"email": emailController.text.trim()};
+
+    final response = await http.post(url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(body));
+
+    setState(() => isSendingEmailOtp = false);
+
+    if (response.statusCode == 200) {
+      emailOtpSent = true;
+      setState(() {});
+      _showMessage("Email OTP Sent");
+    } else {
+      _showMessage("Email OTP Failed");
+    }
+  }
+
+  Future<void> verifyEmailOtp() async {
+    setState(() => isVerifyingEmailOtp = true);
+
+    final url = Uri.parse(
+      "https://foxlchits.com/api/Profile/$profileId/verify-email-otp",
+    );
+
+    final body = {
+      "email": emailController.text.trim(),
+      "otp": emailOtpController.text.trim()
+    };
+
+    final response = await http.post(url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(body));
+
+    setState(() => isVerifyingEmailOtp = false);
+
+    if (response.statusCode == 200) {
+      emailOtpVerified = true;
+      setState(() {});
+      _showMessage("Email Verified");
+    } else {
+      _showMessage("Invalid Email OTP");
+    }
+  }
+
+
+  void _showMessage(String msg) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
   }
 
   Future<void> _getToken() async {
@@ -54,22 +188,6 @@ class _setup_profileState extends State<setup_profile> {
     });
 
     print("FCM Token: $_fcmToken");
-  }
-
-  void sendOtp() {
-    setState(() {
-      otpSent = true;
-    });
-
-    print("OTP sent to ${mobileController.text}");
-  }
-
-  void verifyOtp() {
-    setState(() {
-      otpVerified = true;
-    });
-    // Here, you would call your API to send OTP
-    print("OTP sent to ${mobileController.text}");
   }
 
   Future<void> _pickDate(BuildContext context) async {
@@ -90,29 +208,30 @@ class _setup_profileState extends State<setup_profile> {
     final response = await http.get(
       Uri.parse("https://foxlchits.com/api/Profile/profile/$profileId"),
     );
+
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      print(data);
+
       setState(() {
         nameController.text = data['name'] ?? '';
         emailController.text = data['email'] ?? '';
         mobileController.text = data['phoneNumber'] ?? '';
         addressController.text = data['address'] ?? '';
-        _selectedDate =
-            data['dateofBirth'] != null && data['dateofBirth'].isNotEmpty
-            ? DateTime.parse(data['dateofBirth'])
-            : null;
+
+        signupType = data['signupType'] ?? "";
+
         selectedValue = data['gender'] ?? '';
-        otpVerified = data['phoneVerified'] ?? false;
-        otpSent = otpVerified;
-        emailVerified = data['emailVerified'] ?? false;
+
+        phoneOtpVerified = data['phoneVerified'] ?? false;
+        emailOtpVerified = data['emailVerified'] ?? false;
+
+        if (data['dateofBirth'] != null && data['dateofBirth'].isNotEmpty) {
+          _selectedDate = DateTime.parse(data['dateofBirth']);
+        }
       });
-    } else {
-      print("Failed to load profile data");
     }
   }
 
-  //put data
   Future<void> updateProfile(SetupProfile profile) async {
     final url = Uri.parse("https://foxlchits.com/api/Profile/$profileId");
 
@@ -166,8 +285,6 @@ class _setup_profileState extends State<setup_profile> {
     }
   }
 
-
-
   Future<void> _loadProfileId() async {
     profileId = await storage.read(key: 'profileId');
     print('📦 Loaded profileId: $profileId');
@@ -177,11 +294,58 @@ class _setup_profileState extends State<setup_profile> {
     }
   }
 
-  late Future<SetupProfile> profileFuture;
-  final nameController = TextEditingController();
-  final emailController = TextEditingController();
-  final phoneController = TextEditingController();
-  final addressController = TextEditingController();
+  Future<String> getDiditSessionUrl(String userId) async {
+    if (userId.isEmpty) {
+      throw Exception("User ID is empty. Cannot initiate KYC session.");
+    }
+
+    const url = "https://foxlchits.com/api/KYCDidit/Profile-kyc-create-session"; // Assuming the same endpoint accepts the User ID
+
+    try {
+      // Encode the ID as a raw JSON string ("GUID")
+      String jsonString = jsonEncode(userId.trim());
+      List<int> bodyBytes = utf8.encode(jsonString);
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: <String, String>{
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: bodyBytes,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final sessionUrl = data['url'] as String?;
+
+        if (sessionUrl != null && sessionUrl.isNotEmpty) {
+          return sessionUrl;
+        }
+        throw Exception("API response missing or invalid 'url' field. Body: ${response.body}");
+      } else {
+        print("DIDIT API Error Response Body: ${response.body}");
+        throw Exception(
+            "Failed to get DIDIT session URL. Status: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Error getting DIDIT session URL: $e");
+      rethrow;
+    }
+  }
+
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    mobileController.dispose();
+    addressController.dispose();
+    phoneOtpController.dispose();
+    emailOtpController.dispose();
+    super.dispose();
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -253,20 +417,106 @@ class _setup_profileState extends State<setup_profile> {
                 Container(
                   child: Column(
                     children: [
-                      Row(children: [Expanded(child: mobileTextField())]),
-                      if (loginType != 'phone' && otpSent && !otpVerified) ...[
-                        SizedBox(height: size.height * 0.02),
-                        const SupportText(
-                          text:
-                              'Enter the OTP sended to the Registered Mobile Number',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: appclr.profile_clr2,
-                          fontType: FontType.urbanist,
+                      Container(
+                        child: Column(
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(color: const Color(0xff323232)),
+                                borderRadius: BorderRadius.circular(11),
+                              ),
+                              child: Row(
+                                children: [
+                                  SizedBox(width: size.width * 0.06),
+                                  const SupportText(
+                                    text: '+91',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: appclr.profile_clr1,
+                                    fontType: FontType.urbanist,
+                                  ),
+                                  SizedBox(width: size.width * 0.06),
+                                  Container(
+                                    height: size.height * 0.05,
+                                    width: 1,
+                                    color: const Color(0xffADADAD),
+                                  ),
+                                  SizedBox(width: size.width * 0.06),
+                                  Expanded(
+                                    child: TextFormField(
+                                      controller: mobileController,
+                                      enabled: !(signupType == "Phone") && !phoneOtpVerified,
+                                      style: const TextStyle(color: Colors.white),
+                                      decoration: InputDecoration(
+                                        border: InputBorder.none,
+                                        contentPadding: EdgeInsets.symmetric(
+                                          horizontal: size.width * 0.02,
+                                          vertical: size.height * 0.02,
+                                        ),
+                                        hintText: "Enter mobile number",
+                                        hintStyle: GoogleFonts.urbanist(
+                                          color: const Color(0xffFFFFFF),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      keyboardType: TextInputType.phone,
+                                    ),
+                                  ),
+
+                                  // PHONE OTP button (only for users who signed up with Email)
+                                  if (signupType == "Email" && !phoneOtpVerified)
+                                    TextButton(
+                                      onPressed: isSendingPhoneOtp ? null : requestPhoneOtp,
+                                      child: Text(
+                                        isSendingPhoneOtp
+                                            ? "Sending..."
+                                            : phoneOtpSent
+                                            ? "Resend"
+                                            : "Send OTP",
+                                        style: const TextStyle(color: appclr.blue),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+
+                            // PHONE OTP input below (compact)
+                            if (signupType == "Email" && phoneOtpSent && !phoneOtpVerified) ...[
+                              SizedBox(height: 10),
+                              Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: const Color(0xff323232)),
+                                  borderRadius: BorderRadius.circular(11),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: phoneOtpController,
+                                        style: const TextStyle(color: Colors.white),
+                                        decoration: const InputDecoration(
+                                          hintText: "Enter OTP",
+                                          border: InputBorder.none,
+                                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                                        ),
+                                        keyboardType: TextInputType.number,
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: isVerifyingPhoneOtp ? null : verifyPhoneOtp,
+                                      child: Text(
+                                        isVerifyingPhoneOtp ? "Verifying..." : "Verify",
+                                        style: const TextStyle(color: appclr.blue),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
-                        SizedBox(height: size.height * 0.015),
-                        Row(children: [Expanded(child: otptextfield())]),
-                      ],
+                      ),
                       SizedBox(height: size.height * 0.02),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -279,12 +529,68 @@ class _setup_profileState extends State<setup_profile> {
                             fontType: FontType.urbanist,
                           ),
                           SizedBox(height: size.height * 0.015),
-                          inputTextField('', emailController, (value) {
-                            if (value == null || value.isEmpty) {
-                              return "This field cannot be empty";
-                            }
-                            return null;
-                          }),
+
+                          // Email input (keeps your inputTextField)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              inputTextField(
+                                "",
+                                emailController,
+                                    (value) {
+                                  if (value == null || value.isEmpty) return "Enter email";
+                                  return null;
+                                },
+                                // suffixIcon only when signupType == "Phone"
+                                suffixIcon: (signupType == "Phone")
+                                    ? (!emailOtpVerified
+                                    ? TextButton(
+                                  onPressed: isSendingEmailOtp ? null : requestEmailOtp,
+                                  child: Text(
+                                    isSendingEmailOtp ? "Sending..." : (emailOtpSent ? "Resend" : "Send OTP"),
+                                    style: const TextStyle(color: appclr.blue),
+                                  ),
+                                )
+                                    : const Icon(Icons.check, color: Colors.green))
+                                    : null,
+                              ),
+
+                              // Email OTP input below
+                              if (signupType == "Phone" && emailOtpSent && !emailOtpVerified) ...[
+                                SizedBox(height: 10),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: const Color(0xff323232)),
+                                    borderRadius: BorderRadius.circular(11),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextFormField(
+                                          controller: emailOtpController,
+                                          style: const TextStyle(color: Colors.white),
+                                          decoration: const InputDecoration(
+                                            hintText: "Enter Email OTP",
+                                            border: InputBorder.none,
+                                            contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                                          ),
+                                          keyboardType: TextInputType.number,
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: isVerifyingEmailOtp ? null : verifyEmailOtp,
+                                        child: Text(
+                                          isVerifyingEmailOtp ? "Verifying..." : "Verify",
+                                          style: const TextStyle(color: appclr.blue),
+                                        ),
+                                      ),
+
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                           SizedBox(height: size.height * 0.02),
                           const SupportText(
                             text: 'Address',
@@ -570,6 +876,7 @@ class _setup_profileState extends State<setup_profile> {
       child: Row(
         children: [
           SizedBox(width: size.width * 0.06),
+
           // Country Code
           Container(
             padding: EdgeInsets.symmetric(
@@ -584,6 +891,7 @@ class _setup_profileState extends State<setup_profile> {
               fontType: FontType.urbanist,
             ),
           ),
+
           SizedBox(width: size.width * 0.06),
 
           // Vertical Divider Line
@@ -592,12 +900,14 @@ class _setup_profileState extends State<setup_profile> {
             width: 1,
             color: const Color(0xffADADAD),
           ),
+
           SizedBox(width: size.width * 0.06),
+
           // Mobile Number Input
           Expanded(
             child: TextFormField(
               controller: mobileController,
-              enabled: !otpVerified,
+              enabled: !(signupType == "Phone"), // Phone signup → skip OTP
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 border: InputBorder.none,
@@ -616,25 +926,30 @@ class _setup_profileState extends State<setup_profile> {
             ),
           ),
 
-          // Send OTP Button
-          if (loginType == 'phone') ...[
+          // ================================================
+          // NEW OTP BUTTON (ONLY for signupType = Email)
+          // ================================================
+          if (signupType == "Email" && !phoneOtpVerified)
             TextButton(
-              onPressed: (!otpSent && !otpVerified) ? sendOtp : null,
-              child: const SupportText(
-                text: 'Send OTP',
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: appclr.blue,
-                fontType: FontType.urbanist,
+              onPressed: isSendingPhoneOtp ? null : requestPhoneOtp,
+              child: Text(
+                isSendingPhoneOtp
+                    ? "Sending..."
+                    : phoneOtpSent
+                    ? "Resend"
+                    : "Send OTP",
+                style: const TextStyle(color: appclr.blue),
               ),
             ),
-          ],
+
+          // If signupType = Phone → show nothing
         ],
       ),
     );
   }
 
-  otptextfield() {
+
+  Widget otptextfield() {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: const Color(0xff323232)),
@@ -644,7 +959,7 @@ class _setup_profileState extends State<setup_profile> {
         children: [
           Expanded(
             child: TextFormField(
-              controller: otpController,
+              controller: phoneOtpController,     // <-- UPDATED
               style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(
                 border: InputBorder.none,
@@ -652,15 +967,15 @@ class _setup_profileState extends State<setup_profile> {
                   horizontal: 12,
                   vertical: 14,
                 ),
+                hintText: "Enter OTP",          // <-- ADDED
+                hintStyle: TextStyle(color: Colors.white54),
               ),
-              keyboardType: TextInputType.phone,
+              keyboardType: TextInputType.number,
             ),
           ),
+
           TextButton(
-            onPressed: () {
-              verifyOtp();
-              // Handle OTP send
-            },
+            onPressed: verifyPhoneOtp,            // <-- UPDATED
             child: AnimatedGradientText(
               text: "Verify",
               style: GoogleFonts.urbanist(
@@ -675,13 +990,33 @@ class _setup_profileState extends State<setup_profile> {
     );
   }
 
+
   loginbutton() {
-    Size size = MediaQuery.of(context).size;
+
     return GestureDetector(
       onTap: () async {
+        // -----------------------------
+        // VALIDATION BEFORE SUBMIT
+        // -----------------------------
+
+        // If user registered using phone → email must be verified
+        if (signupType == "Phone" && !emailOtpVerified) {
+          _showMessage("Please verify your email before proceeding");
+          return;
+        }
+
+        // If user registered using email → phone must be verified
+        if (signupType == "Email" && !phoneOtpVerified) {
+          _showMessage("Please verify your phone number before proceeding");
+          return;
+        }
+
+        // -----------------------------
+        // BUILD DATA
+        // -----------------------------
         final setupProfileData = SetupProfile(
           id: profileId ?? '',
-          userID: "", // if needed
+          userID: "",
           name: nameController.text.trim(),
           email: emailController.text.trim(),
           phoneNumber: mobileController.text.trim(),
@@ -690,32 +1025,33 @@ class _setup_profileState extends State<setup_profile> {
           dateOfBirth: _selectedDate != null
               ? "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}"
               : "",
-          signupType: "",
-          phoneVerified: otpVerified,
-          emailVerified: emailVerified,
+          signupType: signupType ?? "",
+          phoneVerified: phoneOtpVerified,
+          emailVerified: emailOtpVerified,
           joinDate: "",
           kycVerification: false,
           referBy: "",
         );
 
-        // 1️⃣ PUT API
+        // -----------------------------
+        // API CALL
+        // -----------------------------
         await updateProfile(setupProfileData);
 
-        // 2️⃣ POST FCM token
         await saveFcmToken();
+        final kycUrl = await getDiditSessionUrl(profileId!);
 
-        // 3️⃣ Navigate to KYC verified screen
+
+        // NAVIGATE
         await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const kyc_verified()),
         );
 
-        // 4️⃣ Notify parent
         if (widget.onKycCompleted != null) {
           widget.onKycCompleted!();
         }
 
-        // Optional: pop back
         Navigator.pop(context);
       },
 
@@ -738,6 +1074,7 @@ class _setup_profileState extends State<setup_profile> {
       ),
     );
   }
+
 }
 
 enum FontType { urbanist }

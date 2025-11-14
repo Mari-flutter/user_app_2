@@ -36,33 +36,47 @@ class gold_investmentState extends State<gold_investment> {
   void switchToTab(int index) {
     _onItemTapped(index); // call the private one internally
   }
+
   Timer? _autoRefreshTimer;
+
   @override
   void initState() {
     super.initState();
+
+    // 👉 Always give default values
+    goldHoldings = GoldHoldings(
+      userGold: 0.0,
+      userInvestment: 0.0,
+      profileId: "",
+    );
+
+    _selectedIndex = widget.initialTab;
+
+    // 👉 load backgrounds—but UI already has defaults
     _loadGoldValue();
     _loadGoldHoldings();
-    _selectedIndex = widget.initialTab;
   }
+
   Future<void> _loadGoldHoldings() async {
-    // Step 1️⃣ — Load cached data immediately
+    // load cached first
     final cached = await GoldHoldingsService.getCachedGoldHoldings();
+
     if (cached != null) {
       setState(() {
         goldHoldings = cached;
       });
     }
 
-    // Step 2️⃣ — Background fetch new data silently
+    // fetch latest from API
     final latest = await GoldHoldingsService.fetchAndCacheGoldHoldings();
+
+    if (!mounted) return;
+
+    // if API returns null → keep existing goldHoldings
     if (latest != null) {
-      // If new data differs, update UI automatically
-      if (latest.userGold != goldHoldings?.userGold ||
-          latest.userInvestment != goldHoldings?.userInvestment) {
-        setState(() {
-          goldHoldings = latest;
-        });
-      }
+      setState(() {
+        goldHoldings = latest;
+      });
     }
   }
 
@@ -107,24 +121,13 @@ class gold_investmentState extends State<gold_investment> {
   }
 
   final List<String> buy_sell_scheme_tag = ['Buy Gold', 'Sell Gold', 'Schemes'];
-  late final List<Widget> pages = [buy_gold(goldrate: _goldValue!.goldValue), sell_gold(), gold_scheme()];
 
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
-    if (_loading || _goldValue == null) {
-      return const Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
-      );
-    }
-
-    // ✅ Create pages safely here (after gold value is ready)
     final pages = [
-      buy_gold(goldrate: _goldValue!.goldValue),
-      sell_gold(),
+      buy_gold(goldrate: _goldValue?.goldValue ?? 0),
+      sell_gold(holdings: (goldHoldings?.userGold ?? 0.0).toStringAsFixed(2)),
       gold_scheme(),
     ];
     return Scaffold(
@@ -143,7 +146,9 @@ class gold_investmentState extends State<gold_investment> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => HomeLayout(initialTab: 2,)),
+                          MaterialPageRoute(
+                            builder: (context) => HomeLayout(initialTab: 2),
+                          ),
                         );
                       },
                       child: Image.asset(
@@ -193,10 +198,12 @@ class gold_investmentState extends State<gold_investment> {
                 SizedBox(height: size.height * 0.02),
                 Container(
                   width: double.infinity,
-                  height: 168,
+                  height: 160,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [Color(0xff734B1F),Color(0xffE1C083)]),
-                    borderRadius: BorderRadius.circular(11)
+                    gradient: LinearGradient(
+                      colors: [Color(0xff734B1F), Color(0xffE1C083)],
+                    ),
+                    borderRadius: BorderRadius.circular(11),
                   ),
                   child: Padding(
                     padding: EdgeInsets.symmetric(
@@ -224,16 +231,27 @@ class gold_investmentState extends State<gold_investment> {
                                 ),
                                 _loading
                                     ? const CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                )
-                                    :
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      )
+                                    : Text(
+                                        '₹${_goldValue?.goldValue.toStringAsFixed(2) ?? '--'}/g',
+                                        style: GoogleFonts.urbanist(
+                                          textStyle: const TextStyle(
+                                            color: Color(0xffFFFFFF),
+                                            fontSize: 30,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
                                 Text(
-                                  '₹${_goldValue?.goldValue.toStringAsFixed(2) ?? '--'}/g',
+                                  _goldValue != null
+                                      ? 'Updated on ${_goldValue!.date.toLocal().toString().split(" ").first}'
+                                      : '',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xffFFFFFF),
-                                      fontSize: 30,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -254,7 +272,7 @@ class gold_investmentState extends State<gold_investment> {
                                   ),
                                 ),
                                 Text(
-                                  '${goldHoldings?.userGold.toStringAsFixed(2) ?? '--'} g',
+                                  '${(goldHoldings?.userGold ?? 0.0).toStringAsFixed(2)} g',
                                   style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xffFFFFFF),
@@ -263,65 +281,40 @@ class gold_investmentState extends State<gold_investment> {
                                     ),
                                   ),
                                 ),
+                                Text(
+                                  '₹${(goldHoldings?.userInvestment ?? 0.0).toStringAsFixed(0)}',
+                                  style: GoogleFonts.urbanist(
+                                    textStyle: const TextStyle(
+                                      color: Color(0xffFFFFFF),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                           ],
                         ),
-                        SizedBox(height: size.height*0.01),
-                        Text(
-                          'Total Chit Taken : 2',
-                          style: GoogleFonts.urbanist(
-                            textStyle: const TextStyle(
-                              color: Color(0xffF8F8F8),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          'Upcoming Auction on 7 days',
-                          style: GoogleFonts.urbanist(
-                            textStyle: const TextStyle(
-                              color: Color(0xffF8F8F8),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Wants to pay a month : 12,000/-',
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xffF8F8F8),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                final goldPrice = _goldValue?.goldValue ?? 0;
-                                final holdings = goldHoldings?.userGold ?? 0;
-                                final totalValue = goldPrice * holdings;
-
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => withdraw_for_gold(totalGoldValue: totalValue),
+                        SizedBox(height: size.height * 0.01),
+                        Align(
+                          alignment: AlignmentGeometry.centerRight,
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => withdraw_for_gold(
                                   ),
-                                );
-                              },
+                                ),
+                              );
+                            },
 
-                              child: Image.asset(
-                                'assets/images/Investments/gold_withdraw.png',
-                                width: 60,
-                                height: 23,
-                              ),
+                            child: Image.asset(
+                              'assets/images/Investments/gold_withdraw.png',
+                              width: 60,
+                              height: 23,
                             ),
-                          ],
+                          ),
                         ),
                       ],
                     ),

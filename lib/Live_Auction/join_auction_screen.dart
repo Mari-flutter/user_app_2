@@ -79,7 +79,6 @@ class _join_auctionState extends State<join_auction> {
             formattedCountdown = _formatDuration(Duration(seconds: timeLeft));
           });
           if (timeLeft == 0) {
-            _showSnackBar("Auction starting now!");
             setState(() => canJoinNow = true);
           }
           break;
@@ -88,7 +87,6 @@ class _join_auctionState extends State<join_auction> {
           final msg = data['message'] ?? '';
           print("📢 Auction Status: $msg");
           setState(() => auctionStatusMessage = msg);
-          _showSnackBar(msg); // ✅ shows server message only
           break;
 
         case 'ERROR':
@@ -99,16 +97,9 @@ class _join_auctionState extends State<join_auction> {
           final msg = data['message'] ?? 'Auction starting soon...';
           final timeLeft = data['timeLeftToStart'] ?? '--:--';
           print("⏳ Auction Countdown: $msg (Time left: $timeLeft)");
-
-          // ✅ Show the first message immediately
           setState(() {
             auctionStatusMessage = msg;
           });
-          _showSnackBar(msg);
-          // ✅ Optional: show it once as a SnackBar when user first joins
-          if (countdownSeconds == 0) {
-            _showSnackBar(msg);
-          }
           break;
 
 

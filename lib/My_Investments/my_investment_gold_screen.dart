@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:user_app/Investments/Gold/gold_investment_screen.dart';
+import 'package:user_app/Receipt_Generate/sell_gold_receipt.dart';
 
 import '../Helper/Local_storage_manager.dart';
 import '../Investments/Gold/Get Physical Gold/get_physical_gold_screen.dart';
 import '../Models/My_Investment/myinvestment_gold_model.dart';
+import '../Receipt_Generate/gold_scheme_receipt.dart';
 import '../Services/secure_storage.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -18,6 +20,8 @@ class my_investment_gold extends StatefulWidget {
   final int completedMonths;
   final int chitValue;
   final int totalContribution;
+
+
 
   const my_investment_gold({
     super.key,
@@ -39,14 +43,120 @@ class _my_investment_goldState extends State<my_investment_gold> {
   MyInvestmentGoldModel? myInvestmentGold;
   bool _loadingInvestment = true;
 
+  bool isDownloading = false;
+
+  String? UserName;
+  String? UserId;
+  String? UserMobileNumber;
+  String convertionDate = '';
+  String _monthName(int month) {
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+    return months[month - 1];
+  }
+  String convertAmountToWords(int number) {
+    if (number == 0) return "Zero Rupees Only";
+
+    final List<String> units = [
+      "",
+      "One",
+      "Two",
+      "Three",
+      "Four",
+      "Five",
+      "Six",
+      "Seven",
+      "Eight",
+      "Nine",
+      "Ten",
+      "Eleven",
+      "Twelve",
+      "Thirteen",
+      "Fourteen",
+      "Fifteen",
+      "Sixteen",
+      "Seventeen",
+      "Eighteen",
+      "Nineteen"
+    ];
+
+    final List<String> tens = [
+      "",
+      "",
+      "Twenty",
+      "Thirty",
+      "Forty",
+      "Fifty",
+      "Sixty",
+      "Seventy",
+      "Eighty",
+      "Ninety"
+    ];
+
+    String twoDigit(int n) {
+      if (n < 20) return units[n];
+      return "${tens[n ~/ 10]} ${units[n % 10]}".trim();
+    }
+
+    String threeDigit(int n) {
+      if (n == 0) return "";
+      if (n < 100) return twoDigit(n);
+      return "${units[n ~/ 100]} Hundred ${twoDigit(n % 100)}".trim();
+    }
+
+    String words = "";
+
+    if ((number ~/ 10000000) > 0) {
+      words += "${twoDigit(number ~/ 10000000)} Crore ";
+      number %= 10000000;
+    }
+    if ((number ~/ 100000) > 0) {
+      words += "${twoDigit(number ~/ 100000)} Lakh ";
+      number %= 100000;
+    }
+    if ((number ~/ 1000) > 0) {
+      words += "${twoDigit(number ~/ 1000)} Thousand ";
+      number %= 1000;
+    }
+    if ((number ~/ 100) > 0) {
+      words += "${twoDigit(number ~/ 100)} Hundred ";
+      number %= 100;
+    }
+    if (number > 0) {
+      words += twoDigit(number);
+    }
+
+    return "${words.trim()} Rupees Only";
+  }
+
   @override
   void initState() {
     super.initState();
+
+    final now = DateTime.now();
+    convertionDate =
+    "${now.day.toString().padLeft(2, '0')} ${_monthName(now.month)} ${now.year}";
+    _loadProfileId();
+
     _autoRefreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
-      if (mounted) _fetchMyInvestmentGold(); // silent refresh
+      if (mounted) _fetchMyInvestmentGold();
     });
-    _fetchMyInvestmentGold(showLoader: true); // initial with spinner
+
+    _fetchMyInvestmentGold(showLoader: true);
   }
+
 
   Future<void> _fetchMyInvestmentGold({bool showLoader = false}) async {
     if (mounted && showLoader) setState(() => _loadingInvestment = true);
@@ -107,6 +217,7 @@ class _my_investment_goldState extends State<my_investment_gold> {
     _autoRefreshTimer?.cancel();
     super.dispose();
   }
+
   Widget _buildShimmerContainer(double height, double borderRadius) {
     return Shimmer.fromColors(
       baseColor: Colors.grey.shade900.withOpacity(0.3),
@@ -123,6 +234,16 @@ class _my_investment_goldState extends State<my_investment_gold> {
     );
   }
 
+  Future<void> _loadProfileId() async {
+    final username = await SecureStorageService.getUserName();
+    final userId = await SecureStorageService.getUserId();
+    final userMobileNumber = await SecureStorageService.getMobileNumber();
+    setState(() {
+      UserName = username;
+      UserId = userId;
+      UserMobileNumber = userMobileNumber;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +280,7 @@ class _my_investment_goldState extends State<my_investment_gold> {
                       ),
                     ),
                     Text(
-                      '${myInvestmentGold?.totalGoldValue?.toStringAsFixed(1) ?? '--'} grams',
+                      '${myInvestmentGold?.totalGoldValue.toStringAsFixed(1) ?? '--'} grams',
                       style: GoogleFonts.urbanist(
                         textStyle: const TextStyle(
                           color: Color(0xff5B8EF8),
@@ -198,7 +319,7 @@ class _my_investment_goldState extends State<my_investment_gold> {
                       ),
                     ),
                     Text(
-                      '₹${myInvestmentGold?.currentGoldPrice?.toStringAsFixed(1) ?? '--'}',
+                      '₹${myInvestmentGold?.currentGoldPrice.toStringAsFixed(1) ?? '--'}',
                       style: GoogleFonts.urbanist(
                         textStyle: const TextStyle(
                           color: Color(0xff5B8EF8),
@@ -243,7 +364,7 @@ class _my_investment_goldState extends State<my_investment_gold> {
                       ),
                     ),
                     Text(
-                      '₹${myInvestmentGold?.totalAmountPaid?.toStringAsFixed(1) ?? '--'}',
+                      '₹${myInvestmentGold?.totalAmountPaid.toStringAsFixed(1) ?? '--'}',
                       style: GoogleFonts.urbanist(
                         textStyle: const TextStyle(
                           color: Color(0xff5B8EF8),
@@ -356,8 +477,7 @@ class _my_investment_goldState extends State<my_investment_gold> {
             ],
           )
         else if (myInvestmentGold == null ||
-            myInvestmentGold!.joinedSchemes == null ||
-            myInvestmentGold!.joinedSchemes!.isEmpty)
+            myInvestmentGold!.joinedSchemes.isEmpty)
           Center(
             child: Text(
               'No joined schemes yet.',
@@ -370,192 +490,193 @@ class _my_investment_goldState extends State<my_investment_gold> {
           )
         else
           Column(
-            children: List.generate(myInvestmentGold!.joinedSchemes!.length, (
+            children: List.generate(myInvestmentGold!.joinedSchemes.length, (
               index,
             ) {
-              final scheme = myInvestmentGold!.joinedSchemes![index];
-              final totalMonths = scheme.duration ?? 0;
-              final completedMonths = scheme.payments.length??0;
+              final scheme = myInvestmentGold!.joinedSchemes[index];
+              final totalMonths = scheme.duration ;
+              final completedMonths = scheme.payments.length;
               final progress = totalMonths > 0
                   ? completedMonths / totalMonths
                   : 0.0;
 
-              return Container(
-                width: double.infinity,
-                height: 273,
-                decoration: BoxDecoration(
-                  color: Color(0xff1D1D1D),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: size.width * 0.05,
-                    vertical: size.height * 0.015,
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Container(
+                  width: double.infinity,
+                  height: 273,
+                  decoration: BoxDecoration(
+                    color: Color(0xff1D1D1D),
+                    borderRadius: BorderRadius.circular(11),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '$totalMonths Months',
-                            style: GoogleFonts.urbanist(
-                              color: Color(0xffFFFFFF),
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: size.width * 0.05,
+                      vertical: size.height * 0.015,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '$totalMonths Months',
+                              style: GoogleFonts.urbanist(
+                                color: Color(0xffFFFFFF),
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                          Text(
-                            '₹${scheme.contribution}/month',
-                            style: GoogleFonts.urbanist(
-                              color: Color(0xffFFFFFF),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                            Text(
+                              '₹${scheme.contribution}/month',
+                              style: GoogleFonts.urbanist(
+                                color: Color(0xffFFFFFF),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: size.height * 0.02),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Progress',
-                            style: GoogleFonts.urbanist(
-                              color: Color(0xffDBDBDB),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                          ],
+                        ),
+                        SizedBox(height: size.height * 0.02),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Progress',
+                              style: GoogleFonts.urbanist(
+                                color: Color(0xffDBDBDB),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                          Text(
-                            '$completedMonths of $totalMonths months completed',
-                            style: GoogleFonts.urbanist(
-                              color: Color(0xffDBDBDB),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                            Text(
+                              '$completedMonths of $totalMonths months completed',
+                              style: GoogleFonts.urbanist(
+                                color: Color(0xffDBDBDB),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: size.height * 0.01),
-                      // --- Gradient Progress Bar ---
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final width = constraints.maxWidth * progress;
-                          return Container(
-                            width: double.infinity,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: Color(0xffE5E5E5),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Stack(
-                              children: [
-                                // Blue Gradient Progress Fill
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 600),
-                                  width: width,
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [
-                                        Color(0xFF2196F3),
-                                        Color(0xFF64B5F6),
-                                      ],
-                                      begin: Alignment.centerLeft,
-                                      end: Alignment.centerRight,
+                          ],
+                        ),
+                        SizedBox(height: size.height * 0.01),
+                        // --- Gradient Progress Bar ---
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final width = constraints.maxWidth * progress;
+                            return Container(
+                              width: double.infinity,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: Color(0xffE5E5E5),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Stack(
+                                children: [
+                                  // Blue Gradient Progress Fill
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 600),
+                                    width: width,
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFF2196F3),
+                                          Color(0xFF64B5F6),
+                                        ],
+                                        begin: Alignment.centerLeft,
+                                        end: Alignment.centerRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(20),
                                     ),
-                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                        SizedBox(height: size.height * 0.025),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Total Invested',
+                                  style: GoogleFonts.urbanist(
+                                    color: Color(0xffDBDBDB),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  '${scheme.totalPaid}',
+                                  style: GoogleFonts.urbanist(
+                                    color: Color(0xff5B8EF8),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                SizedBox(height: size.height * 0.015),
+                                Text(
+                                  'Gold Accumulated',
+                                  style: GoogleFonts.urbanist(
+                                    color: Color(0xffDBDBDB),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  '${scheme.schemeGoldSum}',
+                                  style: GoogleFonts.urbanist(
+                                    color: Color(0xff5B8EF8),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ],
                             ),
-                          );
-                        },
-                      ),
-                      SizedBox(height: size.height * 0.025),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Total Invested',
-                                style: GoogleFonts.urbanist(
-                                  color: Color(0xffDBDBDB),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Target Amount',
+                                  style: GoogleFonts.urbanist(
+                                    color: Color(0xffDBDBDB),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                '${scheme.totalPaid}',
-                                style: GoogleFonts.urbanist(
-                                  color: Color(0xff5B8EF8),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                                Text(
+                                  '${scheme.totalValue}',
+                                  style: GoogleFonts.urbanist(
+                                    color: Color(0xff5B8EF8),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                              SizedBox(height: size.height * 0.015),
-                              Text(
-                                'Gold Accumulated',
-                                style: GoogleFonts.urbanist(
-                                  color: Color(0xffDBDBDB),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                                SizedBox(height: size.height * 0.015),
+                                Text(
+                                  'Maturity Date',
+                                  style: GoogleFonts.urbanist(
+                                    color: const Color(0xffDBDBDB),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                '${scheme.schemeGoldSum}',
-                                style: GoogleFonts.urbanist(
-                                  color: Color(0xff5B8EF8),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Target Amount',
-                                style: GoogleFonts.urbanist(
-                                  color: Color(0xffDBDBDB),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Text(
-                                '${scheme.totalValue}',
-                                style: GoogleFonts.urbanist(
-                                  color: Color(0xff5B8EF8),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(height: size.height * 0.015),
-                              Text(
-                                'Maturity Date',
-                                style: GoogleFonts.urbanist(
-                                  color: const Color(0xffDBDBDB),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
 
-                              Builder(
-                                builder: (context) {
-                                  String maturityText = '--';
-                                  try {
-                                    if (scheme.joinDate != null && scheme.duration != null) {
+                                Builder(
+                                  builder: (context) {
+                                    String maturityText = '--';
+                                    try {
                                       // Parse join date
-                                      final joinDate = DateTime.parse(scheme.joinDate!);
+                                      final joinDate = DateTime.parse(scheme.joinDate);
 
                                       // Add (duration - 1) months to get maturity
                                       final maturityDate = DateTime(
                                         joinDate.year,
-                                        joinDate.month + (scheme.duration! - 1),
+                                        joinDate.month + (scheme.duration - 1),
                                         joinDate.day,
                                       );
 
@@ -566,52 +687,114 @@ class _my_investment_goldState extends State<my_investment_gold> {
                                       ];
                                       maturityText =
                                       "${monthNames[maturityDate.month - 1]} ${maturityDate.year}";
+                                                                        } catch (e) {
+                                      print('⚠️ Error calculating maturity date: $e');
                                     }
-                                  } catch (e) {
-                                    print('⚠️ Error calculating maturity date: $e');
-                                  }
 
-                                  return Text(
-                                    maturityText,
-                                    style: GoogleFonts.urbanist(
-                                      color: const Color(0xff5B8EF8),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: size.height * 0.02),
-                      Align(
-                        alignment: Alignment.bottomRight,
-                        child: Container(
-                          width: 66,
-                          height: 26,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(11),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [Color(0xff2C5DC2), Color(0xff4C71BC)],
+                                    return Text(
+                                      maturityText,
+                                      style: GoogleFonts.urbanist(
+                                        color: const Color(0xff5B8EF8),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Pay Now',
-                              style: GoogleFonts.urbanist(
-                                color: Color(0xffFFFFFF),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                          ],
+                        ),
+                        SizedBox(height: size.height * 0.02),
+                        Align(
+                          alignment: Alignment.bottomRight,
+                          child: GestureDetector(
+                            onTap: () async {
+                              if (isDownloading) return;
+                              String maturityText = '--';
+                              String Installment = '$completedMonths of $totalMonths ';
+                              setState(() => isDownloading = true);
+                              String amountInWords = convertAmountToWords(scheme.totalPaid.toInt());
+                              try{
+                                // Parse join date
+                                final joinDate = DateTime.parse(scheme.joinDate);
+
+                                // Add (duration - 1) months to get maturity
+                                final maturityDate = DateTime(
+                                  joinDate.year,
+                                  joinDate.month + (scheme.duration - 1),
+                                  joinDate.day,
+                                );
+
+                                // Format to something like "Apr 2026"
+                                const monthNames = [
+                                  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                                ];
+                                maturityText =
+                                "${monthNames[maturityDate.month - 1]} ${maturityDate.year}";
+                                                              String _currentDate() {
+                                  final now = DateTime.now();
+                                  const months = [
+                                    "January","February","March","April","May","June",
+                                    "July","August","September","October","November","December"
+                                  ];
+
+                                  return "${now.day.toString().padLeft(2, '0')} "
+                                      "${months[now.month - 1]} "
+                                      "${now.year}";
+                                }
+
+                                String _currentTime() {
+                                  final now = DateTime.now();
+                                  return "${now.hour.toString().padLeft(2, '0')}:"
+                                      "${now.minute.toString().padLeft(2, '0')}:"
+                                      "${now.second.toString().padLeft(2, '0')}";
+                                }
+
+                                await GoldschemeReceiptPDF(context, {
+                                  'customerName': UserName ?? '',
+                                  'contactNumber': UserMobileNumber ?? '',
+                                  'customerId': UserId ?? '',
+                                  'transactionTime': _currentTime(), // No need for ?? '' as it returns String
+                                  'transactionDate': _currentDate(), // No need for ?? '' as it returns String
+                                  'goldDetails': scheme.schemeGoldSum?.toString() ?? '0.0', // Ensure safe call and fallback
+                                  'maturityDate': maturityText, // maturityText is guaranteed non-null
+                                  'totalinvested': scheme.totalPaid?.toString() ?? '0', // Ensure safe call and fallback
+                                  'schemename': scheme.schemeName ?? '', // Ensure fallback if schemeName is null
+                                  'intsallment': Installment, // Installment is guaranteed non-null (String)
+                                  'amountinWords':amountInWords,
+                                });
+
+                              }
+                              finally{ setState(() => isDownloading = false);}
+                            },
+                            child: Container(
+                              width: 66,
+                              height: 26,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(11),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [Color(0xff2C5DC2), Color(0xff4C71BC)],
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'Pay Now',
+                                  style: GoogleFonts.urbanist(
+                                    color: Color(0xffFFFFFF),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );

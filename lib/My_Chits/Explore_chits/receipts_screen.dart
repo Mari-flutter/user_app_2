@@ -1,18 +1,93 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:user_app/Services/secure_storage.dart';
 
+import '../../Models/My_Chits/chit_receipt_model.dart';
 import 'download_receipts_screen.dart';
+import 'package:intl/intl.dart';
 import 'explore_chit_screen.dart';
 
 class receipts extends StatefulWidget {
-  const receipts({super.key});
+  final String chitId;
+  final String chitName;
+  final String chitType;
+  final int timePeriod;
+  const receipts({super.key,required this.chitId, required this.chitName, required this.timePeriod, required this.chitType});
 
   @override
   State<receipts> createState() => _receiptsState();
 }
 
 class _receiptsState extends State<receipts> {
+  String? userName;
+  String? userID;
+  String? mobilenumber;
+  List<ChitReceiptModel> receiptsList = [];
+  bool isLoading = true;
+  @override
+  void initState() {
+    super.initState();
+    print("🔵 RECEIPTS SCREEN OPENED");
+    print("🔵 chitId = ${widget.chitId}");
+    print("🔵 chitName = ${widget.chitName}");
+    print("🔵 chitType = ${widget.chitType}");
+    print("🔵 timePeriod = ${widget.timePeriod}");
+
+    _loadReceipts();
+  }
+
+
+  Future<void> _loadReceipts() async {
+    setState(() => isLoading = true);
+
+    try {
+      // Load user info (async)
+      final userNameFuture = SecureStorageService.getUserName();
+      final userIdFuture = SecureStorageService.getUserId();
+      final mobileFuture = SecureStorageService.getMobileNumber();
+
+      String? profileId = await SecureStorageService.getProfileId();
+      print("🟡 profileId = $profileId");
+      print("🟡 chitId = ${widget.chitId}");
+
+      final url = Uri.parse(
+        "https://foxlchits.com/api/PaymentHistory/by-profile-and-chit?profileId=$profileId&chitId=${widget.chitId}",
+      );
+      print("🟡 API URL = $url");
+
+      final response = await http.get(url);
+      print("🟣 API STATUS = ${response.statusCode}");
+      print("🟣 API BODY = ${response.body}");
+
+      if (response.statusCode == 200) {
+        final List<dynamic> jsonData = jsonDecode(response.body);
+
+        // Parse receipts
+        receiptsList =
+            jsonData.map((e) => ChitReceiptModel.fromJson(e)).toList();
+
+        // Await user info
+        userName = await userNameFuture;
+        userID = await userIdFuture;
+        mobilenumber = await mobileFuture;
+
+        // Update UI
+        setState(() {});
+      } else {
+        setState(() => receiptsList = []);
+      }
+    } catch (e) {
+      print("❌ Exception: $e");
+      setState(() => receiptsList = []);
+    }
+
+    setState(() => isLoading = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -87,7 +162,7 @@ class _receiptsState extends State<receipts> {
                                   ),
                                 ),
                                 Text(
-                                  '₹2 Lakh Chit',
+                                  '${widget.chitName}',
                                   style: GoogleFonts.urbanist(
                                     color: const Color(0xFF3A7AFF),
                                     fontSize: 25,
@@ -102,7 +177,7 @@ class _receiptsState extends State<receipts> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  'Monthly',
+                                  '${widget.chitType}',
                                   style: GoogleFonts.urbanist(
                                     color: const Color(0xFFDDDDDD),
                                     fontSize: 13,
@@ -110,7 +185,7 @@ class _receiptsState extends State<receipts> {
                                   ),
                                 ),
                                 Text(
-                                  '04/10',
+                                  '${receiptsList.length}/${widget.timePeriod}',
                                   style: GoogleFonts.urbanist(
                                     color: const Color(0xFF3A7AFF),
                                     fontSize: 25,
@@ -127,7 +202,6 @@ class _receiptsState extends State<receipts> {
                 ),
                 Container(
                   width: double.infinity,
-                  height: 146,
                   decoration: const BoxDecoration(
                     color: Color(0xFF3F3F3F),
                     borderRadius: BorderRadius.only(
@@ -139,13 +213,31 @@ class _receiptsState extends State<receipts> {
                     horizontal: size.width * 0.04,
                     vertical: size.height * 0.02,
                   ),
-                  child: Column(
-                    children: List.generate(4, (index) {
+                  child: isLoading
+                      ? Center(child: CircularProgressIndicator(color: Colors.white))
+                      : receiptsList.isEmpty
+                      ? Center(
+                    child: Text(
+                      "No receipts available",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  )
+                      : Column(
+                    children: receiptsList.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final receipt = entry.value;
+
+                      final dt = DateTime.parse(receipt.dateTime.toString());
+                      final formattedDate = DateFormat('d MMMM yyyy').format(dt);
+
                       return Padding(
                         padding: EdgeInsets.only(bottom: size.height * 0.008),
-                        child: _receiptRow('1 Month - 01 November 2025'),
+                        child: _receiptRow(
+                          "${index + 1} Month - $formattedDate",
+                          receipt,
+                        ),
                       );
-                    }),
+                    }).toList(),
                   ),
                 ),
               ],
@@ -156,8 +248,13 @@ class _receiptsState extends State<receipts> {
     );
   }
 
-  // 🔹 Reusable Row Widget
-  Widget _receiptRow(String title) {
+  Widget _receiptRow(String title, ChitReceiptModel receipt) {
+    DateTime dt = DateTime.parse(receipt.dateTime.toString());
+
+    String formattedDate = DateFormat('d MMMM yyyy').format(dt);
+    String formattedTime = DateFormat('hh:mm a').format(dt);
+    String status = receipt.status == true ? "Success" : "Failed";
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -173,7 +270,22 @@ class _receiptsState extends State<receipts> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => download_receipts()),
+              MaterialPageRoute(
+                builder: (context) => download_receipts(
+                  userName: userName ?? "",
+                  userID: userID ?? "",
+                  date: formattedDate,
+                  time: formattedTime,
+                  chitName: receipt.chit.chitsName,
+                  chitID:receipt.chit.chitsID,
+                  orderId: receipt.orderId,
+                  amount: receipt.amount,
+                  status: status,
+                  mobilenumber:mobilenumber,
+                  timeperiod:widget.timePeriod,
+                  totaltimeperiod:receiptsList.length,
+                ),
+              ),
             );
           },
           child: Container(

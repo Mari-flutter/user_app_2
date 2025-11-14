@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:user_app/Investments/Gold/gold_investment_screen.dart';
 
-import '../../../Receipt_Generate/sell_gold_receipt.dart';
+import '../../../Receipt_Generate/buy_gold_receipt.dart';
 import '../../../Services/secure_storage.dart';
 
 class confirmation_receipt_for_buy_gold_now extends StatefulWidget {
@@ -30,9 +30,11 @@ class confirmation_receipt_for_buy_gold_now extends StatefulWidget {
 
 class _confirmation_receipt_for_buy_gold_nowState
     extends State<confirmation_receipt_for_buy_gold_now> {
+  bool isDownloading = false;
   late String transactionDate;
   String? userName;
   String? UserId;
+  String? UserMobileNumber;
 
   @override
   void initState() {
@@ -45,9 +47,11 @@ class _confirmation_receipt_for_buy_gold_nowState
   Future<void> _loadProfileId() async {
     final username = await SecureStorageService.getUserName();
     final userId = await SecureStorageService.getUserId();
+    final userMobileNumber =await SecureStorageService.getMobileNumber();
     setState(() {
       userName = username;
       UserId = userId;
+      UserMobileNumber = userMobileNumber;
     });
   }
   String _monthName(int month) {
@@ -522,18 +526,25 @@ class _confirmation_receipt_for_buy_gold_nowState
                 SizedBox(height: size.height * 0.03),
                 GestureDetector(
                   onTap: () async {
-                    await GoldSellReceiptPDF(context, {
-                      'bookingId': '#GOLD4257',
-                      'customerName': 'Thanish Prakash',
-                      'customerId': '#FOX65432',
-                      'contactNumber': '+91 98765 43210',
-                      'transactionDate': '11 November 2025',
+                    if (isDownloading) return;
+
+                    setState(() => isDownloading = true);
+                    try{
+                    await GoldBuyReceiptPDF(context, {
+                      'customerName': '${userName}',
+                      'customerId': '${UserId}',
+                      'contactNumber': '+91 ${UserMobileNumber}',
+                      'transactionDate': '$transactionDate',
                       'collectionMethod': 'Online',
-                      'goldDetails': '10g',
-                      'bookingDate': '11 November 2025',
-                      'storeLocation': 'Malabar - Gandhipuram, Coimbatore',
-                      'storeContact': '+91 80 6789 5432',
-                    });
+                      'goldDetails': '${widget.totalGoldValue.toStringAsFixed(2)}',
+                      'storeContact': '+91 0000000000',
+                      'PurchasedAmount':'${widget.goldAmount.toStringAsFixed(0)}',
+                      'gst':'${widget.gstPercent.toStringAsFixed(0)}',
+                      'servicechagre':'${widget.serviceCharge.toStringAsFixed(0)}'
+                    });}
+                    finally {
+                    setState(() => isDownloading = false);
+                    }
                   },
                   child: Container(
                     width: double.infinity,
@@ -543,7 +554,17 @@ class _confirmation_receipt_for_buy_gold_nowState
                       color: Color(0xffD4B373),
                     ),
                     child: Center(
-                      child: Text(
+                      child: Center(
+                        child: isDownloading
+                            ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Color(0xff544B35),
+                            strokeWidth: 3,
+                          ),
+                        )
+                            :  Text(
                         'Download Receipt',
                         style: GoogleFonts.urbanist(
                           textStyle: const TextStyle(
@@ -556,6 +577,7 @@ class _confirmation_receipt_for_buy_gold_nowState
                     ),
                   ),
                 ),
+                )
               ],
             ),
           ),

@@ -11,6 +11,8 @@ class SecureStorageService {
   static const _keyReferId = 'referId';
   static const _keyUserName = 'userName';
   static const _keyUpcomingAuctionCount = 'upcomingAuctionCount';
+  static const _keyUserMail = 'email';
+  static const _keyMobilenumber = 'userMobileNumber';
 
 
   // ✅ Save upcoming chit count
@@ -38,7 +40,7 @@ class SecureStorageService {
   static Future<void> updateUserAndReferIdsFromApi() async {
     final profileId = await _storage.read(key: _keyProfileId);
     if (profileId == null || profileId.isEmpty) {
-      print("⚠️ No profileId found in secure storage");
+      print("⚠ No profileId found in secure storage");
       return;
     }
 
@@ -52,19 +54,24 @@ class SecureStorageService {
         final userId = data['userID']?.toString();
         final referId = data['referId']?.toString();
         final userName = data['name']?.toString();
+        final email = data['email']?.toString();
+        final userMobileNumber = data['phoneNumber']?.toString();
         print("📦 Profile API response: ${response.body}");
 
 
         if (userId != null) await _storage.write(key: _keyUserId, value: userId);
         if (referId != null) await _storage.write(key: _keyReferId, value: referId);
         if (userName != null) await _storage.write(key: _keyUserName, value: userName);
+        if (email != null) await _storage.write(key: _keyUserMail, value: email);
+        if (userMobileNumber != null) await _storage.write(key: _keyMobilenumber, value: userMobileNumber);
+
 
         print("✅ Stored userId=$userId, referId=$referId, userName=$userName in SecureStorage");
       } else {
         print("❌ Profile fetch failed: ${response.statusCode}");
       }
     } catch (e) {
-      print("⚠️ Error fetching profile details: $e");
+      print("⚠ Error fetching profile details: $e");
     }
   }
 
@@ -74,6 +81,8 @@ class SecureStorageService {
   static Future<String?> getProfileId() async => await _storage.read(key: _keyProfileId);
   static Future<String?> getUserName() async => await _storage.read(key: _keyUserName);
   static Future<String?> getToken() async => await _storage.read(key: _keyToken);
+  static Future<String?> getMail() async => await _storage.read(key: _keyUserMail);
+  static Future<String?> getMobileNumber() async => await _storage.read(key: _keyMobilenumber);
 
   // ✅ Clear all
   static Future<void> clearSession() async => await _storage.deleteAll();

@@ -7,6 +7,8 @@ import 'package:user_app/Investments/Gold/Sell%20Gold/confirmation_receipt_for_s
 import 'package:user_app/Investments/Gold/gold_investment_screen.dart';
 import '../../../Models/Investments/Gold/sell_gold_model.dart';
 import '../../../Services/secure_storage.dart';
+import 'package:shimmer/shimmer.dart';
+
 
 class sell_gold_now extends StatefulWidget {
   final double enteredGrams;
@@ -25,11 +27,45 @@ class sell_gold_now extends StatefulWidget {
 }
 
 class _sell_gold_nowState extends State<sell_gold_now> {
+
+
+  double serviceCharge = 0;
+  bool isServiceChargeLoading = true;
   bool isLoading = false;
+  @override
+  void initState() {
+    super.initState();
+    _fetchServiceCharge();   // 🔥 Add here
+  }
+
+  void _showSmoothSnackBar(String message) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Center(
+          child: Text(
+            message,
+            style: GoogleFonts.urbanist(
+              color: const Color(0xff141414),
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+          ),
+        ),
+        backgroundColor: const Color(0xffD4B373),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
   Future<void> sellGold() async {
     final String apiUrl = "https://foxlchits.com/api/AddYourGold/sell";
 
-    // 🧠 Retrieve userId securely
     final userId = await SecureStorageService.getProfileId();
 
     if (userId == null || userId.isEmpty) {
@@ -38,15 +74,17 @@ class _sell_gold_nowState extends State<sell_gold_now> {
       );
       return;
     }
+
     final double estimateamount = double.parse(widget.estimateAmount.toStringAsFixed(0));
-    final double servicecharge = 300;
-    final double amount = estimateamount - servicecharge;
+    final double amount = estimateamount - serviceCharge;
 
     final sellGoldData = SellGoldModel(
       userId: userId,
-      amount: amount,
+      amount: estimateamount,
       type: "Sell",
     );
+
+    setState(() => isLoading = true);   // ← ADD THIS
 
     try {
       final response = await http.post(
@@ -59,35 +97,122 @@ class _sell_gold_nowState extends State<sell_gold_now> {
         final jsonResponse = jsonDecode(response.body);
         print("✅ Sell Success: $jsonResponse");
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Gold sold successfully! ${amount}")),
-        );
+        _showSmoothSnackBar("Gold sold successfully! ₹$amount");
+
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => confirmation_receipt_for_sell_gold_now(),
+            builder: (context) => confirmation_receipt_for_sell_gold_now(
+              Gold: widget.enteredGrams,
+              EstimateAmount: widget.estimateAmount,
+              Format: "Digital Gold",
+              ServiceCharge: serviceCharge,
+              TotalSellValue: amount,
+            ),
           ),
         );
       } else {
-        print("❌ Sell Failed: ${response.body}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to sell gold. Try again.")),
-        );
+        _showSmoothSnackBar("Failed to sell gold. Try again.");
       }
     } catch (e) {
-      print("⚠️ Error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
       );
+    } finally {
+      setState(() => isLoading = false);   // ← STOP LOADING
     }
   }
+  Future<void> _fetchServiceCharge() async {
+    try {
+      final response = await http.get(
+        Uri.parse("https://foxlchits.com/api/Termsconditions/Forbidden"),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        setState(() {
+          serviceCharge = (data[0]["amount"] ?? 0).toDouble();
+          isServiceChargeLoading = false;
+        });
+      } else {
+        setState(() => isServiceChargeLoading = false);
+      }
+    } catch (e) {
+      print("SERVICE CHARGE API ERROR: $e");
+      setState(() => isServiceChargeLoading = false);
+    }
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
-    final double Servicefee = 100;
     final estimateamount = double.parse(widget.estimateAmount.toStringAsFixed(0));
-    final double totalsellprice = estimateamount-Servicefee;
+    final double totalsellprice = estimateamount-serviceCharge;
+    if (isServiceChargeLoading) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+
+              SizedBox(height: 25),
+
+              // Title shimmer
+              Shimmer.fromColors(
+                baseColor: Colors.grey.shade800,
+                highlightColor: Colors.grey.shade600,
+                child: Container(
+                  width: 180,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade800,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 25),
+
+              // Main card shimmer
+              Shimmer.fromColors(
+                baseColor: Colors.grey.shade900,
+                highlightColor: Colors.grey.shade700,
+                child: Container(
+                  width: double.infinity,
+                  height: MediaQuery.of(context).size.height * 0.45,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade900,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 25),
+
+              // Button shimmer
+              Shimmer.fromColors(
+                baseColor: Colors.grey.shade800,
+                highlightColor: Colors.grey.shade600,
+                child: Container(
+                  width: double.infinity,
+                  height: 45,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade800,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Color(0xff000000),
       body: SafeArea(
@@ -174,7 +299,7 @@ class _sell_gold_nowState extends State<sell_gold_now> {
                               _buildDetailRow(
                                   "Estimate Amount", "₹ ${double.parse(widget.estimateAmount.toStringAsFixed(0))}"),
                               _buildDetailRow("Format", "Digital Gold"),
-                              _buildDetailRow("Service Fee", "${Servicefee}"),
+                              _buildDetailRow("Service Fee", "${serviceCharge}"),
 
                               SizedBox(height: size.height * 0.025),
                               const Divider(color: Color(0xff61512B), height: 1),

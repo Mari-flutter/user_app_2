@@ -154,9 +154,7 @@ class _profileState extends State<profile> {
   }
 
   String getInitials(String name) {
-    if (name
-        .trim()
-        .isEmpty) return "";
+    if (name.trim().isEmpty) return "";
     List<String> parts = name.trim().split(" ");
     if (parts.length == 1) {
       return parts[0][0].toUpperCase();
@@ -175,7 +173,8 @@ class _profileState extends State<profile> {
       }
 
       final url = Uri.parse(
-          "https://foxlchits.com/api/Auctionwinner/my-documents/$profileId");
+        "https://foxlchits.com/api/Auctionwinner/my-documents/$profileId",
+      );
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -223,9 +222,9 @@ class _profileState extends State<profile> {
         }
       } catch (e) {
         print("⚠️ View file error: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Error opening file.")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Error opening file.")));
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -234,12 +233,20 @@ class _profileState extends State<profile> {
     }
   }
 
+  Future<void> _pulltorefersh() async {
+    getProfileData();
+    _fetchDocumentsFromServer();
+  }
+
+  Widget verifiedTick(bool isVerified) {
+    return isVerified
+        ? const Icon(Icons.check_circle, color: Colors.greenAccent, size: 16)
+        : const SizedBox();
+  }
 
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery
-        .of(context)
-        .size;
+    Size size = MediaQuery.of(context).size;
     return Scaffold(
       backgroundColor: Color(0xff000000),
       body: Container(
@@ -261,359 +268,402 @@ class _profileState extends State<profile> {
         child: profileFuture == null
             ? const Center(child: CircularProgressIndicator())
             : FutureBuilder(
-          future: profileFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            } else if (!snapshot.hasData) {
-              return const Center(child: Text('No profile data found'));
-            }
+                future: profileFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  } else if (!snapshot.hasData) {
+                    return const Center(child: Text('No profile data found'));
+                  }
 
-            if (snapshot.hasData) {
-              final profile = snapshot.data!;
-              if (!_isPrefilled) {
-                nameController.text = profile.name;
-                emailController.text = profile.email;
-                phoneController.text = profile.phoneNumber;
-                addressController.text = profile.address;
-                selectedValue = profile.gender;
-                _isPrefilled = true; // avoid reassigning
-              }
+                  if (snapshot.hasData) {
+                    final profile = snapshot.data!;
+                    if (!_isPrefilled) {
+                      nameController.text = profile.name;
+                      emailController.text = profile.email;
+                      phoneController.text = profile.phoneNumber;
+                      addressController.text = profile.address;
+                      selectedValue = profile.gender;
+                      _isPrefilled = true; // avoid reassigning
+                    }
 
-              if (_selectedDate == null && profile.dateOfBirth.isNotEmpty) {
-                try {
-                  final parts = profile.dateOfBirth.split(
-                    '-',
-                  ); // MM-DD-YYYY
-                  _selectedDate = DateTime(
-                    int.parse(parts[2]), // year
-                    int.parse(parts[0]), // month
-                    int.parse(parts[1]), // day
-                  );
-                } catch (e) {
-                  _selectedDate = null;
-                  print("Failed to parse DOB: $e");
-                }
-              }
+                    if (_selectedDate == null &&
+                        profile.dateOfBirth.isNotEmpty) {
+                      try {
+                        final parts = profile.dateOfBirth.split(
+                          '-',
+                        ); // MM-DD-YYYY
+                        _selectedDate = DateTime(
+                          int.parse(parts[2]), // year
+                          int.parse(parts[0]), // month
+                          int.parse(parts[1]), // day
+                        );
+                      } catch (e) {
+                        _selectedDate = null;
+                        print("Failed to parse DOB: $e");
+                      }
+                    }
 
-              selectedValue ??= profile.gender;
+                    selectedValue ??= profile.gender;
 
-              return SafeArea(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: size.width * 0.03,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(height: size.height * 0.04),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            SupportText(
-                              text: 'Profile',
-                              fontSize: 22,
-                              fontWeight: FontWeight.w500,
-                              color: appclr.profile_clr1,
-                              fontType: FontType.urbanist,
+                    return SafeArea(
+                      child: RefreshIndicator(
+                        onRefresh: _pulltorefersh,
+                        displacement: 40,
+                        color: Colors.white,
+                        backgroundColor: const Color(0xff3A7AFF),
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: size.width * 0.03,
                             ),
-                            GestureDetector(
-                              onTap: () async {
-                                if (isEdited) {
-                                  // Currently in edit mode, now user clicked Save → trigger update
-                                  final updatedProfile = ProfileUpdate(
-                                    name: nameController.text.isEmpty
-                                        ? profile.name
-                                        : nameController.text,
-                                    email: emailController.text.isEmpty
-                                        ? profile.email
-                                        : emailController.text,
-                                    address: addressController.text.isEmpty
-                                        ? profile.address
-                                        : addressController.text,
-                                    gender: selectedValue ?? profile.gender,
-                                    dateOfBirth: _selectedDate != null
-                                        ? "${_selectedDate!
-                                        .month}-${_selectedDate!
-                                        .day}-${_selectedDate!.year}"
-                                        : profile.dateOfBirth,
-                                  );
-
-                                  await updateProfile(updatedProfile);
-                                }
-
-                                setState(() {
-                                  isEdited = !isEdited;
-                                });
-                              },
-
-                              child: SupportText(
-                                text: isEdited ? 'Save' : 'Edit',
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                color: isEdited
-                                    ? Color(0xff3A7AFF)
-                                    : appclr.profile_clr1,
-                                fontType: FontType.urbanist,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: size.height * 0.04),
-                        Center(
-                          child: Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                                color: Color(0xff0C204C),
-                                border: Border.all(
-                                    color: Color(0xff0E1629), width: 2),
-                                borderRadius: BorderRadius.circular(50)
-                            ),
-                            child: Center(
-                              child: SupportText(
-                                text: '${getInitials(profile.name)}',
-                                fontSize: 36,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xffFFFFFF),
-                                fontType: FontType.urbanist,
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: size.height * 0.04),
-                        const SupportText(
-                          text: 'Name',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: appclr.profile_clr2,
-                          fontType: FontType.urbanist,
-                        ),
-                        SizedBox(height: size.height * 0.015),
-                        inputTextField('${profile.name}', nameController, (
-                            value,) {
-                          if (value == null || value.isEmpty) {
-                            return "This field cannot be empty";
-                          }
-                          return null;
-                        }),
-                        SizedBox(height: size.height * 0.02),
-                        const SupportText(
-                          text: 'User Id / Referal Id',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: appclr.profile_clr2,
-                          fontType: FontType.urbanist,
-                        ),
-                        SizedBox(height: size.height * 0.015),
-                        inputTextField(
-                          '${profile.userID}',
-                          TextEditingController(),
-                              (value) {
-                            if (value == null || value.isEmpty) {
-                              return "This field cannot be empty";
-                            }
-                            return null;
-                          },
-                        ),
-                        SizedBox(height: size.height * 0.02),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            const SupportText(
-                              text: 'Date of Birth',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: appclr.profile_clr2,
-                              fontType: FontType.urbanist,
-                            ),
-                            SizedBox(width: size.width * 0.26),
-                            const SupportText(
-                              text: 'Gender',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: appclr.profile_clr2,
-                              fontType: FontType.urbanist,
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: size.height * 0.015),
-                        calendarandgender(
-                          profile.dateOfBirth,
-                          profile.gender,
-                        ),
-                        SizedBox(height: size.height * 0.02),
-                        const SupportText(
-                          text: 'Mobile Number',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: appclr.profile_clr2,
-                          fontType: FontType.urbanist,
-                        ),
-                        SizedBox(height: size.height * 0.015),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: mobileTextField(profile.phoneNumber),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: size.height * 0.02),
-                        SupportText(
-                          text: 'Mail ID',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: appclr.profile_clr2,
-                          fontType: FontType.urbanist,
-                        ),
-                        SizedBox(height: size.height * 0.015),
-                        inputTextField(
-                          '${profile.email}',
-                          emailController,
-                              (value) {
-                            if (value == null || value.isEmpty) {
-                              return "This field cannot be empty";
-                            }
-                            return null;
-                          },
-                        ),
-                        SizedBox(height: size.height * 0.02),
-                        const SupportText(
-                          text: 'Address',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: appclr.profile_clr2,
-                          fontType: FontType.urbanist,
-                        ),
-                        SizedBox(height: size.height * 0.015),
-                        inputTextField(
-                          '${profile.address}',
-                          addressController,
-                              (value) {
-                            if (value == null || value.isEmpty) {
-                              return "This field cannot be empty";
-                            }
-                            return null;
-                          },
-                        ),
-                        SizedBox(height: size.height * 0.02),
-                        SupportText(
-                          text: 'Upload Documents',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: appclr.profile_clr2,
-                          fontType: FontType.urbanist,
-                        ),
-                        SizedBox(height: size.height * 0.02),
-                        GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _documents.length,
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10,
-                            childAspectRatio: 3.5, // makes height smaller
-                          ),
-                          itemBuilder: (context, index) {
-                            final doc = _documents[index];
-                            final bool hasFile =
-                                doc.documentPath != null && doc.documentPath!.isNotEmpty;
-                            final bool isVerified =
-                                doc.verifiedAt != null && doc.verifiedAt!.isNotEmpty;
-
-                            return Container(
-                              decoration: BoxDecoration(
-                                border: Border.all(color: const Color(0xff323232), width: 1),
-                                borderRadius: BorderRadius.circular(11),
-                                color: Colors.black,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  // Document Type Name
-                                  Expanded(
-                                    child: SupportText(
-                                      text: doc.documentType,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: appclr.profile_clr2,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SizedBox(height: size.height * 0.04),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    SupportText(
+                                      text: 'Profile',
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w500,
+                                      color: appclr.profile_clr1,
                                       fontType: FontType.urbanist,
-                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    GestureDetector(
+                                      onTap: () async {
+                                        if (isEdited) {
+                                          // Currently in edit mode, now user clicked Save → trigger update
+                                          final updatedProfile = ProfileUpdate(
+                                            name: nameController.text.isEmpty
+                                                ? profile.name
+                                                : nameController.text,
+                                            email: emailController.text.isEmpty
+                                                ? profile.email
+                                                : emailController.text,
+                                            address:
+                                                addressController.text.isEmpty
+                                                ? profile.address
+                                                : addressController.text,
+                                            gender:
+                                                selectedValue ?? profile.gender,
+                                            dateOfBirth: _selectedDate != null
+                                                ? "${_selectedDate!.month}-${_selectedDate!.day}-${_selectedDate!.year}"
+                                                : profile.dateOfBirth,
+                                          );
+
+                                          await updateProfile(updatedProfile);
+                                        }
+
+                                        setState(() {
+                                          isEdited = !isEdited;
+                                        });
+                                      },
+
+                                      child: SupportText(
+                                        text: isEdited ? 'Save' : 'Edit',
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                        color: isEdited
+                                            ? Color(0xff3A7AFF)
+                                            : appclr.profile_clr1,
+                                        fontType: FontType.urbanist,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: size.height * 0.04),
+                                Center(
+                                  child: Container(
+                                    width: 100,
+                                    height: 100,
+                                    decoration: BoxDecoration(
+                                      color: Color(0xff0C204C),
+                                      border: Border.all(
+                                        color: Color(0xff0E1629),
+                                        width: 2,
+                                      ),
+                                      borderRadius: BorderRadius.circular(50),
+                                    ),
+                                    child: Center(
+                                      child: SupportText(
+                                        text: '${getInitials(profile.name)}',
+                                        fontSize: 36,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xffFFFFFF),
+                                        fontType: FontType.urbanist,
+                                      ),
                                     ),
                                   ),
-
-                                  // Icons (✅ and add/view)
-                                  Row(
-                                    children: [
-                                      // 🧾 Show view icon if document exists, else add icon
-                                      GestureDetector(
-                                        onTap: hasFile
-                                            ? () => _viewFile(doc)
-                                            : () {
-                                         Navigator.push(context,MaterialPageRoute(builder: (context)=>attach_file()));
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                "Add document for ${doc.documentType}",
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(left: 6),
-                                          child: Image.asset(
-                                            hasFile
-                                                ? 'assets/images/Live_Auction/view_document.png'
-                                                : 'assets/images/Live_Auction/add_document.png',
-                                            width: 20,
-                                            height: 20,
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(width: 2,),
-                                      // ✅ Show verified tick
-                                      if (isVerified)
-                                        const Icon(
+                                ),
+                                SizedBox(height: size.height * 0.04),
+                                const SupportText(
+                                  text: 'Name',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: appclr.profile_clr2,
+                                  fontType: FontType.urbanist,
+                                ),
+                                SizedBox(height: size.height * 0.015),
+                                inputTextField(
+                                  '${profile.name}',
+                                  nameController,
+                                  (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return "This field cannot be empty";
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                SizedBox(height: size.height * 0.02),
+                                const SupportText(
+                                  text: 'User Id / Referal Id',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: appclr.profile_clr2,
+                                  fontType: FontType.urbanist,
+                                ),
+                                SizedBox(height: size.height * 0.015),
+                                inputTextField(
+                                  '${profile.userID}',
+                                  TextEditingController(),
+                                  (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return "This field cannot be empty";
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                SizedBox(height: size.height * 0.02),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  children: [
+                                    const SupportText(
+                                      text: 'Date of Birth',
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: appclr.profile_clr2,
+                                      fontType: FontType.urbanist,
+                                    ),
+                                    SizedBox(width: size.width * 0.26),
+                                    const SupportText(
+                                      text: 'Gender',
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: appclr.profile_clr2,
+                                      fontType: FontType.urbanist,
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: size.height * 0.015),
+                                calendarandgender(
+                                  profile.dateOfBirth,
+                                  profile.gender,
+                                ),
+                                SizedBox(height: size.height * 0.02),
+                                const SupportText(
+                                  text: 'Mobile Number',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: appclr.profile_clr2,
+                                  fontType: FontType.urbanist,
+                                ),
+                                SizedBox(height: size.height * 0.015),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: mobileTextField(
+                                        profile.phoneNumber,
+                                        suffixIcon: const Icon(
                                           Icons.check_circle,
                                           color: Colors.greenAccent,
-                                          size: 16,
+                                          size: 20,
                                         ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        )
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: size.height * 0.02),
+                                SupportText(
 
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            } else {
-              return const Center(child: CircularProgressIndicator());
-            }
-          },
-        ),
+
+                                  text: 'Mail ID',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: appclr.profile_clr2,
+                                  fontType: FontType.urbanist,
+                                ),
+                                SizedBox(height: size.height * 0.015),
+                                inputTextField(
+                                  '${profile.email}',
+                                  emailController,
+                                  (value) {},
+                                  suffixIcon: const Icon(
+                                    Icons.check_circle,
+                                    color: Colors.greenAccent,
+                                    size: 20,
+                                  ),
+                                ),
+                                SizedBox(height: size.height * 0.02),
+                                const SupportText(
+                                  text: 'Address',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: appclr.profile_clr2,
+                                  fontType: FontType.urbanist,
+                                ),
+                                SizedBox(height: size.height * 0.015),
+                                inputTextField(
+                                  '${profile.address}',
+                                  addressController,
+                                  (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return "This field cannot be empty";
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                SizedBox(height: size.height * 0.02),
+                                SupportText(
+                                  text: 'Upload Documents',
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: appclr.profile_clr2,
+                                  fontType: FontType.urbanist,
+                                ),
+                                SizedBox(height: size.height * 0.02),
+                                GridView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: _documents.length,
+                                  gridDelegate:
+                                      const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        crossAxisSpacing: 10,
+                                        mainAxisSpacing: 10,
+                                        childAspectRatio:
+                                            3.5, // makes height smaller
+                                      ),
+                                  itemBuilder: (context, index) {
+                                    final doc = _documents[index];
+                                    final bool hasFile =
+                                        doc.documentPath != null &&
+                                        doc.documentPath!.isNotEmpty;
+                                    final bool isVerified =
+                                        doc.verifiedAt != null &&
+                                        doc.verifiedAt!.isNotEmpty;
+
+                                    return Container(
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: const Color(0xff323232),
+                                          width: 1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(11),
+                                        color: Colors.black,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          // Document Type Name
+                                          Expanded(
+                                            child: SupportText(
+                                              text: doc.documentType,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: appclr.profile_clr2,
+                                              fontType: FontType.urbanist,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+
+                                          // Icons (✅ and add/view)
+                                          Row(
+                                            children: [
+                                              // 🧾 Show view icon if document exists, else add icon
+                                              GestureDetector(
+                                                onTap: hasFile
+                                                    ? () => _viewFile(doc)
+                                                    : () {
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) =>
+                                                                attach_file(),
+                                                          ),
+                                                        );
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text(
+                                                              "Add document for ${doc.documentType}",
+                                                            ),
+                                                          ),
+                                                        );
+                                                      },
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        left: 6,
+                                                      ),
+                                                  child: Image.asset(
+                                                    hasFile
+                                                        ? 'assets/images/Live_Auction/view_document.png'
+                                                        : 'assets/images/Live_Auction/add_document.png',
+                                                    width: 20,
+                                                    height: 20,
+                                                  ),
+                                                ),
+                                              ),
+                                              SizedBox(width: 2),
+                                              // ✅ Show verified tick
+                                              if (isVerified)
+                                                const Icon(
+                                                  Icons.check_circle,
+                                                  color: Colors.greenAccent,
+                                                  size: 16,
+                                                ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  } else {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                },
+              ),
       ),
     );
   }
 
-  inputTextField(String hintText,
-      TextEditingController controller,
-      String? Function(String?) validator, {
-        Widget? suffixIcon,
-        bool obscureText = false,
-      }) {
-    Size size = MediaQuery
-        .of(context)
-        .size;
+  inputTextField(
+    String hintText,
+    TextEditingController controller,
+    String? Function(String?) validator, {
+    Widget? suffixIcon,
+    bool obscureText = false,
+  }) {
+    Size size = MediaQuery.of(context).size;
     return TextFormField(
       readOnly: !isEdited,
       controller: controller,
@@ -646,6 +696,7 @@ class _profileState extends State<profile> {
             width: 1.0,
           ),
         ),
+
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(11),
           borderSide: const BorderSide(
@@ -669,9 +720,7 @@ class _profileState extends State<profile> {
   }
 
   calendarandgender(String dob, String gender) {
-    Size size = MediaQuery
-        .of(context)
-        .size;
+    Size size = MediaQuery.of(context).size;
     String? dropdownValue;
 
     if (selectedValue == "Male" || selectedValue == "Female") {
@@ -705,8 +754,7 @@ class _profileState extends State<profile> {
                         child: SupportText(
                           text: _selectedDate == null
                               ? (dob.isEmpty ? 'Select Date' : dob)
-                              : "${_selectedDate!.day}/${_selectedDate!
-                              .month}/${_selectedDate!.year}",
+                              : "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}",
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: appclr.profile_clr1,
@@ -736,10 +784,10 @@ class _profileState extends State<profile> {
                   GestureDetector(
                     onTap: isEdited
                         ? () {
-                      setState(() {
-                        isExpanded = !isExpanded;
-                      });
-                    }
+                            setState(() {
+                              isExpanded = !isExpanded;
+                            });
+                          }
                         : null, // ✅ only allow toggle if isEdited
                     child: Container(
                       height: size.height * 0.06,
@@ -874,10 +922,8 @@ class _profileState extends State<profile> {
     );
   }
 
-  Widget mobileTextField(String phoneNumber) {
-    Size size = MediaQuery
-        .of(context)
-        .size;
+  Widget mobileTextField(String phoneNumber, {Widget? suffixIcon}) {
+    Size size = MediaQuery.of(context).size;
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: const Color(0xff323232)),
@@ -888,6 +934,7 @@ class _profileState extends State<profile> {
         style: TextStyle(color: Colors.white),
         decoration: InputDecoration(
           border: InputBorder.none,
+          suffixIcon: suffixIcon,
           contentPadding: EdgeInsets.symmetric(
             horizontal: size.width * 0.05,
             vertical: size.height * 0.017,
@@ -905,9 +952,7 @@ class _profileState extends State<profile> {
   }
 
   loginbutton() {
-    Size size = MediaQuery
-        .of(context)
-        .size;
+    Size size = MediaQuery.of(context).size;
     return GestureDetector(
       onTap: () {
         Navigator.push(

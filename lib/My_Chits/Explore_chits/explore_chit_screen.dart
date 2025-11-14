@@ -132,7 +132,12 @@ class _explore_chitState extends State<explore_chit> {
       chitValue: widget.chitValue,
       chitName: widget.chitName,
     ),
-    receipts(),
+    receipts(
+      chitId:widget.chitId,
+      chitName:widget.chitName,
+      chitType:widget.chitType,
+      timePeriod:widget.timePeriod,
+    ),
     terms_condition(),
     withdraw_for_chits(),];
   }

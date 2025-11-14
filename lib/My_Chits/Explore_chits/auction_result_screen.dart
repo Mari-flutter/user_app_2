@@ -31,16 +31,6 @@ class _auction_resultState extends State<auction_result> {
   }
 
   Future<void> _loadPastAuctionResults() async {
-    // 🔹 Try loading from cache first
-    final cached = LocalStorageManager.getPastAuctionResults();
-    if (cached.isNotEmpty) {
-      setState(() {
-        pastResults = cached;
-        isLoading = false;
-      });
-      print('📦 Loaded from LocalStorageManager cache');
-    }
-
     // 🔹 Fetch fresh data from API
     try {
       final response = await http.get(
@@ -60,8 +50,6 @@ class _auction_resultState extends State<auction_result> {
           isLoading = false;
         });
 
-        // ✅ Save in Hive using LocalStorageManager
-        await LocalStorageManager.savePastAuctionResults(fetched);
       } else {
         print('❌ API failed: ${response.statusCode}');
       }

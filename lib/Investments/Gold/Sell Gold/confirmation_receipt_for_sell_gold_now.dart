@@ -3,10 +3,23 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:user_app/Investments/Gold/gold_investment_screen.dart';
 
 import '../../../Receipt_Generate/sell_gold_receipt.dart';
-
+import '../../../Services/secure_storage.dart';
 
 class confirmation_receipt_for_sell_gold_now extends StatefulWidget {
-  const confirmation_receipt_for_sell_gold_now({super.key});
+  final double Gold;
+  final double EstimateAmount;
+  final String Format;
+  final double ServiceCharge;
+  final double TotalSellValue;
+
+  const confirmation_receipt_for_sell_gold_now({
+    super.key,
+    required this.Gold,
+    required this.EstimateAmount,
+    required this.Format,
+    required this.ServiceCharge,
+    required this.TotalSellValue,
+  });
 
   @override
   State<confirmation_receipt_for_sell_gold_now> createState() =>
@@ -15,6 +28,47 @@ class confirmation_receipt_for_sell_gold_now extends StatefulWidget {
 
 class _confirmation_receipt_for_sell_gold_nowState
     extends State<confirmation_receipt_for_sell_gold_now> {
+  bool isDownloading = false;
+  late String transactionDate;
+  String? userName;
+  String? UserId;
+  String? UserMobileNumber;
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileId();
+    final now = DateTime.now();
+    transactionDate =
+    "${now.day.toString().padLeft(2, '0')} ${_monthName(now.month)} ${now.year}";
+  }
+  Future<void> _loadProfileId() async {
+    final username = await SecureStorageService.getUserName();
+    final userId = await SecureStorageService.getUserId();
+    final userMobileNumber =await SecureStorageService.getMobileNumber();
+    setState(() {
+      userName = username;
+      UserId = userId;
+      UserMobileNumber = userMobileNumber;
+    });
+  }
+  String _monthName(int month) {
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+    return months[month - 1];
+  }
+
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -35,7 +89,8 @@ class _confirmation_receipt_for_sell_gold_nowState
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => gold_investment(initialTab: 1),
+                            builder: (context) =>
+                                gold_investment(initialTab: 1),
                           ),
                         ); // This will go back to the existing get_physical_gold
                       },
@@ -93,7 +148,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                               ),
                             ),
                             Text(
-                              'Rajesh Kumar (#F02343)',
+                              '${userName} (${UserId})',
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffFFFFFF),
@@ -109,16 +164,6 @@ class _confirmation_receipt_for_sell_gold_nowState
                           children: [
                             Text(
                               'Official Confirmation Receipt',
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xffFFFFFF),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              'Booking ID: #GOLD4257',
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffFFFFFF),
@@ -261,7 +306,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Booking Details',
+                                      'Valuation Details',
                                       style: GoogleFonts.urbanist(
                                         textStyle: const TextStyle(
                                           color: Color(0xffFFFFFF),
@@ -280,7 +325,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                               CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              'Transfer Mode',
+                                              'Format',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff6E6E6E),
@@ -290,7 +335,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                               ),
                                             ),
                                             Text(
-                                              'Online Credit',
+                                              '${widget.Format}',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
@@ -316,7 +361,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                               ),
                                             ),
                                             Text(
-                                              '10g',
+                                              '${widget.Gold} g',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
@@ -350,7 +395,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                               ),
                                             ),
                                             Text(
-                                              '11 November 2025',
+                                              transactionDate,
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
@@ -366,7 +411,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                               CrossAxisAlignment.end,
                                           children: [
                                             Text(
-                                              'Store Contact',
+                                              'Service Charge',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff6E6E6E),
@@ -376,7 +421,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                               ),
                                             ),
                                             Text(
-                                              '+91 80 6789 5432',
+                                              '₹ ${widget.ServiceCharge}',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
@@ -389,10 +434,9 @@ class _confirmation_receipt_for_sell_gold_nowState
                                         ),
                                       ],
                                     ),
-
                                     SizedBox(height: size.height * 0.01),
                                     Text(
-                                      'Credit Timeline:',
+                                      'Estimated Amount',
                                       style: GoogleFonts.urbanist(
                                         textStyle: const TextStyle(
                                           color: Color(0xff6E6E6E),
@@ -402,7 +446,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                                       ),
                                     ),
                                     Text(
-                                      'Within 3 working days from the date of sale',
+                                      '₹ ${widget.TotalSellValue}',
                                       style: GoogleFonts.urbanist(
                                         textStyle: const TextStyle(
                                           color: Color(0xff989898),
@@ -444,29 +488,47 @@ class _confirmation_receipt_for_sell_gold_nowState
                   ],
                 ),
                 SizedBox(height: size.height * 0.03),
-                GestureDetector(onTap:  () async {
-                    await GoldSellReceiptPDF(context, {
-                      'bookingId': '#GOLD4257',
-                      'customerName': 'Thanish Prakash',
-                      'customerId': '#FOX65432',
-                      'contactNumber': '+91 98765 43210',
-                      'transactionDate': '11 November 2025',
-                      'collectionMethod': 'Online',
-                      'goldDetails': '10g',
-                      'bookingDate': '11 November 2025',
-                      'storeLocation': 'Malabar - Gandhipuram, Coimbatore',
-                      'storeContact': '+91 80 6789 5432',
-                    });
+                GestureDetector(
+                  onTap: () async {
+                    if (isDownloading) return;
+
+                    setState(() => isDownloading = true);
+
+                    try {
+                      await GoldSellReceiptPDF(context, {
+                        'customerName': '${userName}',
+                        'customerId': '${UserId}',
+                        'contactNumber': '+91 ${UserMobileNumber}',
+                        'transactionDate': '$transactionDate',
+                        'collectionMethod': 'Online',
+                        'goldDetails': '${widget.Gold.toStringAsFixed(2)}',
+                        'storeContact': '+91 0000000000',
+                        'EstimatedAmount': '${widget.EstimateAmount.toStringAsFixed(0)}',
+                        'servicechagre': '${widget.ServiceCharge.toStringAsFixed(0)}'
+                      });
+                    } finally {
+                      setState(() => isDownloading = false);
+                    }
                   },
+
                   child: Container(
                     width: double.infinity,
                     height: 37,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(11),
-                      color: Color(0xffD4B373),
+                      color: const Color(0xffD4B373),
                     ),
                     child: Center(
-                      child: Text(
+                      child: isDownloading
+                          ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          color: Color(0xff544B35),
+                          strokeWidth: 3,
+                        ),
+                      )
+                          : Text(
                         'Download Receipt',
                         style: GoogleFonts.urbanist(
                           textStyle: const TextStyle(
@@ -477,7 +539,7 @@ class _confirmation_receipt_for_sell_gold_nowState
                         ),
                       ),
                     ),
-                  ),
+                  )
                 ),
               ],
             ),

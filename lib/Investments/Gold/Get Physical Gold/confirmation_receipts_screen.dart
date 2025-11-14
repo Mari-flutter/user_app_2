@@ -1,17 +1,73 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:user_app/Models/Investments/Gold/store_model.dart';
+
 
 import '../../../Receipt_Generate/physical_gold_receipt.dart';
+import '../../../Services/secure_storage.dart';
 
 class confirmation_receipts extends StatefulWidget {
-  const confirmation_receipts({super.key, required double selectedGrams, required StoreSelectionModel store});
+  final  store;
+  final String storecontact;
+  final double selectedGrams;
+  final String storelocation;
+  const confirmation_receipts({
+    super.key,
+    required this.selectedGrams,
+    required  this.store,
+    required this.storecontact,
+    required this.storelocation,
+  });
 
   @override
   State<confirmation_receipts> createState() => _confirmation_receiptsState();
 }
 
 class _confirmation_receiptsState extends State<confirmation_receipts> {
+  bool isDownloading = false;
+
+  late String convertionDate;
+  String? userName;
+  String? UserId;
+  String? UserMobileNumber;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileId();
+    final now = DateTime.now();
+    convertionDate =
+        "${now.day.toString().padLeft(2, '0')} ${_monthName(now.month)} ${now.year}";
+  }
+
+  Future<void> _loadProfileId() async {
+    final username = await SecureStorageService.getUserName();
+    final userId = await SecureStorageService.getUserId();
+    final userMobileNumber = await SecureStorageService.getMobileNumber();
+    setState(() {
+      userName = username;
+      UserId = userId;
+      UserMobileNumber = userMobileNumber;
+    });
+  }
+
+  String _monthName(int month) {
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+    return months[month - 1];
+  }
+
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -85,7 +141,7 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                               ),
                             ),
                             Text(
-                              'Rajesh Kumar (#F02343)',
+                              '${userName} (${UserId})',
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffFFFFFF),
@@ -96,30 +152,15 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                             ),
                           ],
                         ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Official Confirmation Receipt',
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xffFFFFFF),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                        Text(
+                          'Official Confirmation Receipt',
+                          style: GoogleFonts.urbanist(
+                            textStyle: const TextStyle(
+                              color: Color(0xffFFFFFF),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
                             ),
-                            Text(
-                              'Booking ID: #GOLD4257',
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xffFFFFFF),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ],
                     ),
@@ -282,7 +323,7 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                               ),
                                             ),
                                             Text(
-                                              'Malabar- Bangalore',
+                                              '${widget.store}',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
@@ -305,7 +346,7 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                               ),
                                             ),
                                             Text(
-                                              '11 November 2025',
+                                                convertionDate,
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
@@ -354,7 +395,7 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                               ),
                                             ),
                                             Text(
-                                              '10g',
+                                              '${widget.selectedGrams} g',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
@@ -377,7 +418,7 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                                               ),
                                             ),
                                             Text(
-                                              '+91 80 6789 5432',
+                                              '${widget.storecontact}',
                                               style: GoogleFonts.urbanist(
                                                 textStyle: const TextStyle(
                                                   color: Color(0xff989898),
@@ -555,19 +596,22 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                 SizedBox(height: size.height * 0.03),
                 GestureDetector(
                   onTap: () async {
+                    if (isDownloading) return;
+
+                    setState(() => isDownloading = true);
+                    try{
                     await PhysicalGoldReceiptPDF(context, {
-                      'bookingId': '#GOLD4257',
-                      'customerName': 'Thanish Prakash',
-                      'customerId': '#FOX65432',
-                      'contactNumber': '+91 98765 43210',
-                      'transactionDate': '11 November 2025',
+                      'customerName': userName,
+                      'customerId': UserId,
+                      'contactNumber': UserMobileNumber,
+                      'transactionDate': convertionDate,
                       'collectionMethod': 'In-Store Pickup',
-                      'goldDetails': '10g',
-                      'bookingDate': '11 November 2025',
-                      'storeLocation': 'Malabar - Gandhipuram, Coimbatore',
-                      'storeContact': '+91 80 6789 5432',
-                      'validUntil': '11 December 2025',
-                    });
+                      'goldDetails': '${widget.selectedGrams}',
+                      'bookingDate': convertionDate,
+                      'storeLocation': '${widget.store} - ${widget.storelocation}',
+                      'storeContact': '${widget.storecontact}',
+                    });}
+                        finally{ setState(() => isDownloading = false);}
                   },
                   child: Container(
                     width: double.infinity,
@@ -577,7 +621,17 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                       color: Color(0xffD4B373),
                     ),
                     child: Center(
-                      child: Text(
+                      child:  Center(
+                        child: isDownloading
+                            ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Color(0xff544B35),
+                            strokeWidth: 3,
+                          ),
+                        )
+                            : Text(
                         'Download Receipt',
                         style: GoogleFonts.urbanist(
                           textStyle: const TextStyle(
@@ -590,6 +644,7 @@ class _confirmation_receiptsState extends State<confirmation_receipts> {
                     ),
                   ),
                 ),
+                )
               ],
             ),
           ),

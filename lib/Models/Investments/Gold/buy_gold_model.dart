@@ -11,7 +11,7 @@ class BuyGoldRequest {
 
   Map<String, dynamic> toJson() {
     return {
-      "userId": userId,
+      "profileID": userId,
       "amount": amount,
       "type": type,
     };

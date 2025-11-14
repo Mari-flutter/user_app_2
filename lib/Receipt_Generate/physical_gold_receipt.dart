@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:google_fonts/google_fonts.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -46,20 +47,7 @@ Future<void> PhysicalGoldReceiptPDF(
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              // Booking ID top-right
-              pw.Align(
-                alignment: pw.Alignment.topRight,
-                child: pw.Text(
-                  "Booking ID: ${data['bookingId']}",
-                  style: pw.TextStyle(
-                    font: regularFont,
-                    fontSize: 10,
-                    color: textcolor,
-                  ),
-                ),
-              ),
               pw.SizedBox(height:50),
-
               // Customer Information Card
               pw.Container(
                 width: 480,
@@ -254,8 +242,6 @@ Future<void> PhysicalGoldReceiptPDF(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       _detailRow("Booking Date", data['bookingDate'], boldFont),
-                      pw.SizedBox(height: 15),
-                      _detailRow("Valid Until", data['validUntil'], boldFont),
                     ],
                   ),
                 ],
@@ -320,7 +306,31 @@ Future<void> PhysicalGoldReceiptPDF(
   );
 
   final bytes = await pdf.save();
+  void _showSmoothSnackBar(String message) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Center(
+          child: Text(
+            message,
+            style: GoogleFonts.urbanist(
+              color: const Color(0xff141414),
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+          ),
+        ),
+        backgroundColor: const Color(0xffD4B373),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
   // Save file
   Directory directory;
   if (Platform.isAndroid) {
@@ -328,15 +338,10 @@ Future<void> PhysicalGoldReceiptPDF(
   } else {
     directory = await getApplicationDocumentsDirectory();
   }
-  final file = File('${directory.path}/Gold_Receipt_${data['bookingId']}.pdf');
+  final file = File('${directory.path}/Physical_Gold_Receipt_${data['bookingId']}.pdf');
   await file.writeAsBytes(bytes);
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text("✅ Gold receipt saved to ${directory.path}"),
-      backgroundColor: Colors.green,
-    ),
-  );
+  _showSmoothSnackBar("✅ Physical Gold receipt saved to ${directory.path}");
 
   await OpenFilex.open(file.path);
 }

@@ -250,7 +250,7 @@ class _buy_goldState extends State<buy_gold> {
                       double enteredAmount = double.tryParse(_controller.text) ?? 0;
 
                       if (enteredAmount < 1000) {
-                        _showSmoothSnackBar("Please enter an amount above ₹1000");
+                        _showSmoothSnackBar("You can buy gold only for ₹1000 and abouve");
                         return;
                       }
 

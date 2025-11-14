@@ -176,7 +176,7 @@ class _auction_screenState extends State<auction_screen> {
     );
 
     // Reset after 6 seconds so new navigation can occur
-    Future.delayed(const Duration(seconds:10), () {
+    Future.delayed(const Duration(seconds:30), () {
       isDrawInProgress = false;
     });
   }

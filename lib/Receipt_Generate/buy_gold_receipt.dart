@@ -7,13 +7,14 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-Future<void> GoldSellReceiptPDF(
-  BuildContext context,
-  Map<String, dynamic> data,
-) async {
+Future<void> GoldBuyReceiptPDF(
+    BuildContext context,
+    Map<String, dynamic> data,
+    ) async {
   final pageWidth =
       PdfPageFormat.a4.width - 2 * 18; // A4 width minus horizontal padding
   final pdf = pw.Document();
+
   final alert = pw.MemoryImage(
     (await rootBundle.load(
       'assets/images/Investments/alert_2.png',
@@ -153,7 +154,7 @@ Future<void> GoldSellReceiptPDF(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
                           pw.Text(
-                            "Gold Sale Completed",
+                            "Gold Purchased Completed",
                             style: pw.TextStyle(
                               font: boldFont,
                               fontSize: 13,
@@ -165,7 +166,7 @@ Future<void> GoldSellReceiptPDF(
                     ),
                     pw.SizedBox(height: 6),
                     pw.Text(
-                      "Your online gold has been sold successfully. The proceeds will be transferred to your account soon.",
+                      "Your online gold has been Purchased successfully. The proceeds will be transferred to your account soon.",
                       style: pw.TextStyle(
                         color: PdfColor.fromHex('#808080'),
                         font: regularFont,
@@ -175,7 +176,7 @@ Future<void> GoldSellReceiptPDF(
                   ],
                 ),
               ),
-              pw.SizedBox(height: 20),
+              pw.SizedBox(height: 30),
 
               // Collection Details
               pw.Text(
@@ -201,13 +202,13 @@ Future<void> GoldSellReceiptPDF(
                   _detailRowEnd("Transaction Date", data['transactionDate'], boldFont),
                 ],
               ),
-              pw.SizedBox(height: 15),
+              pw.SizedBox(height: 20),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   _detailRow("Gold Details", "${data['goldDetails']} g", boldFont),
-                  _detailRowEnd("Estimated Amount", "INR ${data['EstimatedAmount']}", boldFont),
+                  _detailRowEnd("Purchased Amount", "INR ${data['PurchasedAmount']}", boldFont),
                 ],
               ),
               pw.SizedBox(height: 20),
@@ -215,15 +216,11 @@ Future<void> GoldSellReceiptPDF(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  _detailRow("Service Charge", "INR ${data['servicechagre']}", boldFont),
-                  _detailRowEnd(
-                    "Credit Timeline",
-                    "Within 3 working days from the date of sale",
-                    boldFont,
-                  ),
+                  _detailRow("GST", "${data['gst']} %", boldFont),
+                  _detailRowEnd("Service Charge", "INR ${data['servicechagre']}", boldFont),
                 ],
               ),
-              pw.SizedBox(height: 50),
+              pw.SizedBox(height: 20),
               pw.Divider(color: PdfColor.fromHex('#7B5326'), height: 0.5),
               pw.SizedBox(height: 20),
               pw.Row(
@@ -304,10 +301,10 @@ Future<void> GoldSellReceiptPDF(
   } else {
     directory = await getApplicationDocumentsDirectory();
   }
-  final file = File('${directory.path}/Gold_Receipt_${DateTime.now().millisecondsSinceEpoch}.pdf');
+  final file = File('${directory.path}/Gold_Pruchased_Receipt_${DateTime.now().millisecondsSinceEpoch}.pdf');
   await file.writeAsBytes(bytes);
 
-  _showSmoothSnackBar("✅ Gold receipt saved to ${directory.path}");
+  _showSmoothSnackBar("✅ Gold Purchased receipt saved to ${directory.path}");
 
   await OpenFilex.open(file.path);
 }

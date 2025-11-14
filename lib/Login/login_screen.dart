@@ -13,14 +13,18 @@ import 'package:user_app/Bottom_Navbar/bottom_navigation_bar.dart';
 
 class RequestOtpModel {
   final String phoneNumber;
+
   RequestOtpModel({required this.phoneNumber});
+
   Map<String, dynamic> toJson() => {'phoneNumber': phoneNumber};
 }
 
 class VerifyOtpModel {
   final String phoneNumber;
   final String otp;
+
   VerifyOtpModel({required this.phoneNumber, required this.otp});
+
   Map<String, dynamic> toJson() => {'phoneNumber': phoneNumber, 'otp': otp};
 }
 
@@ -39,7 +43,8 @@ class VerifyOtpResponse {
 
   factory VerifyOtpResponse.fromJson(Map<String, dynamic> json) {
     // 🔑 LOGIC: If a token is present in the 200 OK response, verification is successful.
-    final bool verified = json['token'] != null && json['token'].toString().isNotEmpty;
+    final bool verified =
+        json['token'] != null && json['token'].toString().isNotEmpty;
 
     return VerifyOtpResponse(
       profileId: json['profileId'] ?? '',
@@ -74,14 +79,17 @@ class _loginState extends State<login> {
   bool _isRegistering = false;
 
   // 🔑 NEW ENDPOINTS
-  static const String _loginRequestUrl = "https://foxlchits.com/api/AuthPhoneUser/login-request-otp";
-  static const String _loginVerifyUrl = "https://foxlchits.com/api/AuthPhoneUser/verify-otp-login";
+  static const String _loginRequestUrl =
+      "https://foxlchits.com/api/AuthPhoneUser/login-request-otp";
+  static const String _loginVerifyUrl =
+      "https://foxlchits.com/api/AuthPhoneUser/verify-otp-login";
 
-  static const String _registerRequestUrl = "https://foxlchits.com/api/AuthPhoneUser/request-otp";
-  static const String _registerVerifyUrl = "https://foxlchits.com/api/AuthPhoneUser/verify-otp-register";
+  static const String _registerRequestUrl =
+      "https://foxlchits.com/api/AuthPhoneUser/request-otp";
+  static const String _registerVerifyUrl =
+      "https://foxlchits.com/api/AuthPhoneUser/verify-otp-register";
 
   final storage = const FlutterSecureStorage();
-
 
   @override
   void sendOtp() async {
@@ -115,14 +123,16 @@ class _loginState extends State<login> {
       if (response.statusCode == 200) {
         // ✅ SUCCESS: User is Registered, proceed to Login Verification
         _handleOtpSuccess(response, phone, "Login");
-
       } else {
         // ❌ FAILURE (Non-200): User is likely NOT Registered. Attempt to Register.
-        print("⚠ Login OTP failed (Status ${response.statusCode}). Attempting Registration...");
+        print(
+          "⚠ Login OTP failed (Status ${response.statusCode}). Attempting Registration...",
+        );
 
         // 2. 📝 ATTEMPT REGISTRATION REQUEST
         response = await http.post(
-          Uri.parse(_registerRequestUrl), // Request OTP for new user registration
+          Uri.parse(_registerRequestUrl),
+          // Request OTP for new user registration
           headers: {"Content-Type": "application/json"},
           body: jsonEncode(requestBody.toJson()),
         );
@@ -133,7 +143,6 @@ class _loginState extends State<login> {
             _isRegistering = true; // Set flag for the verifyOtp function
           });
           _handleOtpSuccess(response, phone, "Registration");
-
         } else {
           // ❌ FAILURE: Registration failed (e.g., phone invalid or other server issue)
           String errorMessage = "Failed to send OTP. Please try again.";
@@ -200,7 +209,9 @@ class _loginState extends State<login> {
     FocusScope.of(context).unfocus();
     final enteredOtp = _otpController.text.trim();
     // Use the stored phone number from the send request
-    final phone = _sentPhoneNumber.isNotEmpty ? _sentPhoneNumber : _phoneController.text.trim();
+    final phone = _sentPhoneNumber.isNotEmpty
+        ? _sentPhoneNumber
+        : _phoneController.text.trim();
 
     if (enteredOtp.isEmpty || phone.length != 10) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -216,7 +227,9 @@ class _loginState extends State<login> {
       final verifyBody = VerifyOtpModel(phoneNumber: phone, otp: enteredOtp);
 
       // Determine which API to call based on the flag set in sendOtp()
-      final String verificationUrl = _isRegistering ? _registerVerifyUrl : _loginVerifyUrl;
+      final String verificationUrl = _isRegistering
+          ? _registerVerifyUrl
+          : _loginVerifyUrl;
       final String successType = _isRegistering ? "Registration" : "Login";
 
       final response = await http.post(
@@ -234,9 +247,15 @@ class _loginState extends State<login> {
         // we can safely proceed.
         if (verifyResponse.phoneVerified) {
           // ✅ Save details securely
-          await storage.write(key: 'profileId', value: verifyResponse.profileId);
+          await storage.write(
+            key: 'profileId',
+            value: verifyResponse.profileId,
+          );
           await storage.write(key: 'token', value: verifyResponse.token);
-          await storage.write(key: 'phoneNumber', value: verifyResponse.phoneNumber);
+          await storage.write(
+            key: 'phoneNumber',
+            value: verifyResponse.phoneNumber,
+          );
           await storage.write(key: 'loginType', value: 'phone');
 
           print('✅ Profile ID Saved: ${verifyResponse.profileId}');
@@ -272,7 +291,8 @@ class _loginState extends State<login> {
         String errorMessage = "Invalid OTP for $successType. Please try again.";
         try {
           final errorData = jsonDecode(response.body);
-          errorMessage = errorData['message'] ?? errorData['error'] ?? errorMessage;
+          errorMessage =
+              errorData['message'] ?? errorData['error'] ?? errorMessage;
         } catch (e) {
           // If response body is not JSON, use the default message
         }
@@ -301,96 +321,41 @@ class _loginState extends State<login> {
     _otpController.dispose();
     super.dispose();
   }
-  Future<void> signInWithGoogle() async {
-    try {
-      // ✅ Your Web Client ID from Firebase Console
-      const String webClientId =
-          '634781175675-9sr37dl784o2r8dckmd2ie9hnrsvm5e4.apps.googleusercontent.com';
 
-      // 1️⃣ Trigger Google Sign-In
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        scopes: ['email', 'profile'],
-        serverClientId: webClientId,
-      );
+  Future<String?> signInWithGoogle() async {
+    final GoogleSignIn googleSignIn = GoogleSignIn(
+      scopes: ['email'],
+      clientId: "634781175675-9sr37dl784o2r8dckmd2ie9hnrsvm5e4.apps.googleusercontent.com",
+    );
 
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser == null) return; // user cancelled
+    // Step 1: user chooses Google account
+    final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
 
-      // 2️⃣ Get Google Auth info
-      final GoogleSignInAuthentication googleAuth =
-      await googleUser.authentication;
-
-      // 3️⃣ Create Firebase credential
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      // 4️⃣ Sign in to Firebase using the Google credentials
-      final UserCredential userCredential =
-      await FirebaseAuth.instance.signInWithCredential(credential);
-      final User? user = userCredential.user;
-
-      if (user == null) throw Exception("Firebase login failed");
-
-      // 5️⃣ Get Firebase ID Token
-      final idToken = await user.getIdToken();
-
-      developer.log("🔥 Firebase ID Token: $idToken", name: "GoogleSignIn");
-
-      print("👤 Logged in as: ${user.displayName}, ${user.email}");
-
-      // 6️⃣ Send Firebase token to your ASP.NET backend
-      final response = await http.get(
-        Uri.parse("http://192.168.1.105:5155/api/FirebaseLogin/google-profile"),
-        headers: {
-          "Authorization": "Bearer $idToken",
-          "Content-Type": "application/json",
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        print("✅ Backend Response: $data");
-
-        // 7️⃣ Optionally save backend data securely
-        await storage.write(key: 'loginType', value: 'google');
-        await storage.write(key: 'profileId', value: user.uid);
-        await storage.write(key: 'email', value: user.email ?? '');
-        await storage.write(key: 'name', value: user.displayName ?? '');
-        await storage.write(key: 'photoUrl', value: user.photoURL ?? '');
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Signed in with Google successfully"),
-            backgroundColor: Color(0xff07C66A),
-          ),
-        );
-
-        // 8️⃣ Navigate to Home
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => HomeLayout()),
-        );
-      } else {
-        print("❌ Backend Error: ${response.body}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Backend login failed: ${response.body}"),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    } catch (e) {
-      print("❌ Error signing in: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Sign-In failed: $e"),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+    if (googleUser == null) {
+      print("User cancelled login");
+      return null;
     }
+
+    // Step 2: get tokens
+    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+    // Step 3: login into Firebase
+    final credential = GoogleAuthProvider.credential(
+      idToken: googleAuth.idToken,
+      accessToken: googleAuth.accessToken,
+    );
+
+    await FirebaseAuth.instance.signInWithCredential(credential);
+
+    // Step 4: send this to backend
+    print("TOKEN: ${googleAuth.idToken}");
+    developer.log("TOKEN: ${googleAuth.idToken}");
+
+    return googleAuth.idToken;
   }
+
+
+
   @override
   Widget build(BuildContext context) {
     // ... (Your existing UI code remains the same)

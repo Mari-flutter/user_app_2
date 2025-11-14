@@ -450,7 +450,8 @@ class _store_selectionState extends State<store_selection> {
                                         builder: (context) => confirm_your_booking(
                                           selectedStore: store, // Pass the selected model
                                           selectedGrams: widget.selectedGrams,
-                                          EstimatedValue:widget.EstimateValue
+                                          EstimatedValue:widget.EstimateValue,
+                                          Storecontact:store.phoneNumber,
                                         ),
                                       ),
                                     );

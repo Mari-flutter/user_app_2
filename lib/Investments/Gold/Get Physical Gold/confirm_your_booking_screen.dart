@@ -6,6 +6,7 @@ import 'package:user_app/Models/Investments/Gold/store_model.dart';
 import 'package:user_app/Services/secure_storage.dart';
 
 import 'confirmation_receipts_screen.dart';
+
 // You'll likely need to import your local storage helper here
 // import '../../Helper/Local_storage_manager.dart';
 
@@ -13,12 +14,14 @@ class confirm_your_booking extends StatefulWidget {
   final StoreSelectionModel selectedStore;
   final double selectedGrams;
   final double EstimatedValue;
+  final String Storecontact;
 
   const confirm_your_booking({
     super.key,
     required this.selectedStore,
     required this.selectedGrams,
     required this.EstimatedValue,
+    required this.Storecontact
   });
 
   @override
@@ -28,11 +31,13 @@ class confirm_your_booking extends StatefulWidget {
 class _confirm_your_bookingState extends State<confirm_your_booking> {
   // --- State for API call management ---
   bool _isConfirming = false;
+
   // NOTE: REPLACE THIS WITH THE ACTUAL PROFILE ID FROM YOUR AUTH/STORAGE
   // For demonstration, using a placeholder GUID.
 
   // --- API Endpoint and Fixed Fee ---
-  static const String _API_URL = 'https://foxlchits.com/api/SchemeMember/BuyPhysicalGold';
+  static const String _API_URL =
+      'https://foxlchits.com/api/SchemeMember/BuyPhysicalGold';
   final double _platformFee = 210.0; // ₹210
 
   // Placeholder function (assuming it's not needed since EstimatedValue is passed)
@@ -75,20 +80,23 @@ class _confirm_your_bookingState extends State<confirm_your_booking> {
         print('Booking Confirmed Successfully. Response: ${response.body}');
 
         // 2. Navigate to Confirmation Receipts Screen on success
-        Navigator.pushReplacement( // Use pushReplacement to prevent going back to this screen
+        Navigator.pushReplacement(
+          // Use pushReplacement to prevent going back to this screen
           context,
           MaterialPageRoute(
             builder: (context) => confirmation_receipts(
-              store: widget.selectedStore,
+              store: widget.selectedStore.shopName,
               selectedGrams: widget.selectedGrams,
-              // You might want to pass the API response data/receipt ID here
+              storecontact :widget.Storecontact,
+              storelocation:widget.selectedStore.address,
             ),
           ),
         );
-
       } else {
         // Handle API errors (4xx or 5xx status codes)
-        print('API Error. Status: ${response.statusCode}, Body: ${response.body}');
+        print(
+          'API Error. Status: ${response.statusCode}, Body: ${response.body}',
+        );
         _showErrorSnackBar('Booking failed. Please try again.');
       }
     } catch (e) {
@@ -172,7 +180,10 @@ class _confirm_your_bookingState extends State<confirm_your_booking> {
                   decoration: BoxDecoration(
                     color: const Color(0xff1F1F1F),
                     borderRadius: BorderRadius.circular(11),
-                    border: Border.all(color: const Color(0xff61512B), width: .5),
+                    border: Border.all(
+                      color: const Color(0xff61512B),
+                      width: .5,
+                    ),
                   ),
                   child: Padding(
                     padding: EdgeInsets.symmetric(
@@ -202,63 +213,178 @@ class _confirm_your_bookingState extends State<confirm_your_booking> {
                             children: [
                               // --- Gold Amount ---
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('Gold Amount', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xff989898), fontSize: 12, fontWeight: FontWeight.w600))),
-                                  Text('${grams.toStringAsFixed(2)}g', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xff989898), fontSize: 12, fontWeight: FontWeight.w600))),
+                                  Text(
+                                    'Gold Amount',
+                                    style: GoogleFonts.urbanist(
+                                      textStyle: const TextStyle(
+                                        color: Color(0xff989898),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${grams.toStringAsFixed(2)}g',
+                                    style: GoogleFonts.urbanist(
+                                      textStyle: const TextStyle(
+                                        color: Color(0xff989898),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                               SizedBox(height: size.height * 0.005),
 
                               // --- Estimate ---
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('Estimate', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xff989898), fontSize: 12, fontWeight: FontWeight.w600))),
-                                  Text('₹${widget.EstimatedValue.toStringAsFixed(0)}', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xff989898), fontSize: 12, fontWeight: FontWeight.w600))),
+                                  Text(
+                                    'Estimate',
+                                    style: GoogleFonts.urbanist(
+                                      textStyle: const TextStyle(
+                                        color: Color(0xff989898),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '₹${widget.EstimatedValue.toStringAsFixed(0)}',
+                                    style: GoogleFonts.urbanist(
+                                      textStyle: const TextStyle(
+                                        color: Color(0xff989898),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                               SizedBox(height: size.height * 0.005),
 
                               // --- Format ---
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('Format', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xff989898), fontSize: 12, fontWeight: FontWeight.w600))),
-                                  const Text('Physical Gold', style: TextStyle(color: Color(0xff989898), fontSize: 12, fontWeight: FontWeight.w600)),
+                                  Text(
+                                    'Format',
+                                    style: GoogleFonts.urbanist(
+                                      textStyle: const TextStyle(
+                                        color: Color(0xff989898),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  const Text(
+                                    'Physical Gold',
+                                    style: TextStyle(
+                                      color: Color(0xff989898),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ],
                               ),
                               SizedBox(height: size.height * 0.005),
 
                               // --- Store Name (Binding the ID in the payload, but displaying name) ---
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('Store', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xff989898), fontSize: 12, fontWeight: FontWeight.w600))),
-                                  Text(storeName, style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xff989898), fontSize: 12, fontWeight: FontWeight.w600))),
+                                  Text(
+                                    'Store',
+                                    style: GoogleFonts.urbanist(
+                                      textStyle: const TextStyle(
+                                        color: Color(0xff989898),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    storeName,
+                                    style: GoogleFonts.urbanist(
+                                      textStyle: const TextStyle(
+                                        color: Color(0xff989898),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                               SizedBox(height: size.height * 0.005),
 
                               // --- Platform Fee ---
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('Platform Fee', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xff989898), fontSize: 12, fontWeight: FontWeight.w600))),
-                                  Text('₹${_platformFee.toStringAsFixed(0)}', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xff989898), fontSize: 12, fontWeight: FontWeight.w600))),
+                                  Text(
+                                    'Platform Fee',
+                                    style: GoogleFonts.urbanist(
+                                      textStyle: const TextStyle(
+                                        color: Color(0xff989898),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '₹${_platformFee.toStringAsFixed(0)}',
+                                    style: GoogleFonts.urbanist(
+                                      textStyle: const TextStyle(
+                                        color: Color(0xff989898),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                               SizedBox(height: size.height * 0.025),
 
-                              const Divider(color: Color(0xff61512B), height: 1),
+                              const Divider(
+                                color: Color(0xff61512B),
+                                height: 1,
+                              ),
                               SizedBox(height: size.height * 0.025),
 
                               // --- Total Gold Value ---
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('Total Gold Value', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xffD1AF74), fontSize: 14, fontWeight: FontWeight.w600))),
-                                  Text('${grams.toStringAsFixed(2)} g', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xffD1AF74), fontSize: 14, fontWeight: FontWeight.w600))),
+                                  Text(
+                                    'Total Gold Value',
+                                    style: GoogleFonts.urbanist(
+                                      textStyle: const TextStyle(
+                                        color: Color(0xffD1AF74),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${grams.toStringAsFixed(2)} g',
+                                    style: GoogleFonts.urbanist(
+                                      textStyle: const TextStyle(
+                                        color: Color(0xffD1AF74),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                               SizedBox(height: size.height * 0.035),
@@ -302,35 +428,38 @@ class _confirm_your_bookingState extends State<confirm_your_booking> {
 
                               // --- Confirm Button ---
                               GestureDetector(
-                                onTap: _isConfirming ? null : _confirmBooking, // Disable tap when loading
+                                onTap: _isConfirming ? null : _confirmBooking,
+                                // Disable tap when loading
                                 child: Container(
                                   width: double.infinity,
                                   height: 42,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(11),
                                     // Dim color if loading
-                                    color: _isConfirming ? const Color(0xffA09068) : const Color(0xffD4B373),
+                                    color: _isConfirming
+                                        ? const Color(0xffA09068)
+                                        : const Color(0xffD4B373),
                                   ),
                                   child: Center(
                                     child: _isConfirming
                                         ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        color: Color(0xff544B35),
-                                        strokeWidth: 3,
-                                      ),
-                                    )
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              color: Color(0xff544B35),
+                                              strokeWidth: 3,
+                                            ),
+                                          )
                                         : Text(
-                                      'Confirm Booking',
-                                      style: GoogleFonts.urbanist(
-                                        textStyle: const TextStyle(
-                                          color: Color(0xff544B35),
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
+                                            'Confirm Booking',
+                                            style: GoogleFonts.urbanist(
+                                              textStyle: const TextStyle(
+                                                color: Color(0xff544B35),
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
                                   ),
                                 ),
                               ),

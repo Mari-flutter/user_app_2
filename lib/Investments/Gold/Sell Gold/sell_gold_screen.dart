@@ -10,7 +10,8 @@ import '../Get Physical Gold/get_physical_gold_screen.dart';
 
 
 class sell_gold extends StatefulWidget {
-  const sell_gold({super.key});
+  final String holdings;
+  const sell_gold({super.key,required this.holdings});
 
   @override
   State<sell_gold> createState() => _sell_goldState();
@@ -50,7 +51,31 @@ class _sell_goldState extends State<sell_gold> {
     _controller.dispose();
     super.dispose();
   }
+  void _showSmoothSnackBar(String message) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Center(
+          child: Text(
+            message,
+            style: GoogleFonts.urbanist(
+              color: const Color(0xff141414),
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+          ),
+        ),
+        backgroundColor: const Color(0xffD4B373),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -222,12 +247,15 @@ class _sell_goldState extends State<sell_gold> {
                   GestureDetector(
                     onTap: () {
                       double? enteredGrams = double.tryParse(_controller.text);
-
+                      if (approxAmount < 1000) {
+                        _showSmoothSnackBar("You can buy gold only for ₹1000 and abouve");
+                        return;
+                      }
                       if (enteredGrams == null || enteredGrams <= 0) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              'Please enter a valid gold amount to sell.',
+                              'Please enter a valid gram to sell.',
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Colors.white,
@@ -244,7 +272,10 @@ class _sell_goldState extends State<sell_gold> {
                         );
                         return;
                       }
-
+                      if (enteredGrams > double.parse(widget.holdings)) {
+                        _showSmoothSnackBar("You don't have a enough holdings your account to sell gold");
+                        return;
+                      }
                       if (_goldValue == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(

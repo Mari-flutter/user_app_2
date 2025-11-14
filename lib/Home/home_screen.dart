@@ -264,7 +264,7 @@ class _homeState extends State<home> with AutomaticKeepAliveClientMixin {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SizedBox(height: size.height * 0.02),
+                          SizedBox(height: size.height * 0.01),
                           Row(
                             children: [
                               Text(
@@ -309,7 +309,7 @@ class _homeState extends State<home> with AutomaticKeepAliveClientMixin {
                               children: [
                                 Container(
                                   width: double.infinity,
-                                  height: 189,
+                                  height: 200,
                                   decoration: BoxDecoration(
                                     image: DecorationImage(
                                       image: AssetImage(

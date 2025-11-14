@@ -5,15 +5,119 @@ import 'package:user_app/My_Chits/Explore_chits/receipts_screen.dart';
 import '../../Receipt_Generate/chit_receipt.dart';
 
 class download_receipts extends StatefulWidget {
-  const download_receipts({super.key});
+  final String userName;
+  final String userID;
+  final String date;
+  final String time;
+  final String chitName;
+  final String orderId;
+  final double amount;
+  final String status;
+  final String chitID;
+  final String? mobilenumber;
+  final int timeperiod;
+  final int totaltimeperiod;
+
+  const download_receipts({
+    super.key,
+    required this.userName,
+    required this.userID,
+    required this.date,
+    required this.time,
+    required this.chitName,
+    required this.orderId,
+    required this.amount,
+    required this.status,
+    required this.chitID,
+    required this.mobilenumber,
+    required this.timeperiod,
+    required this.totaltimeperiod
+  });
 
   @override
   State<download_receipts> createState() => _download_receiptsState();
 }
 
 class _download_receiptsState extends State<download_receipts> {
+  String convertAmountToWords(int number) {
+    if (number == 0) return "Zero Rupees Only";
+
+    final List<String> units = [
+      "",
+      "One",
+      "Two",
+      "Three",
+      "Four",
+      "Five",
+      "Six",
+      "Seven",
+      "Eight",
+      "Nine",
+      "Ten",
+      "Eleven",
+      "Twelve",
+      "Thirteen",
+      "Fourteen",
+      "Fifteen",
+      "Sixteen",
+      "Seventeen",
+      "Eighteen",
+      "Nineteen"
+    ];
+
+    final List<String> tens = [
+      "",
+      "",
+      "Twenty",
+      "Thirty",
+      "Forty",
+      "Fifty",
+      "Sixty",
+      "Seventy",
+      "Eighty",
+      "Ninety"
+    ];
+
+    String twoDigit(int n) {
+      if (n < 20) return units[n];
+      return "${tens[n ~/ 10]} ${units[n % 10]}".trim();
+    }
+
+    String threeDigit(int n) {
+      if (n == 0) return "";
+      if (n < 100) return twoDigit(n);
+      return "${units[n ~/ 100]} Hundred ${twoDigit(n % 100)}".trim();
+    }
+
+    String words = "";
+
+    if ((number ~/ 10000000) > 0) {
+      words += "${twoDigit(number ~/ 10000000)} Crore ";
+      number %= 10000000;
+    }
+    if ((number ~/ 100000) > 0) {
+      words += "${twoDigit(number ~/ 100000)} Lakh ";
+      number %= 100000;
+    }
+    if ((number ~/ 1000) > 0) {
+      words += "${twoDigit(number ~/ 1000)} Thousand ";
+      number %= 1000;
+    }
+    if ((number ~/ 100) > 0) {
+      words += "${twoDigit(number ~/ 100)} Hundred ";
+      number %= 100;
+    }
+    if (number > 0) {
+      words += twoDigit(number);
+    }
+
+    return "${words.trim()} Rupees Only";
+  }
+  bool isDownloading = false;
+
   @override
   Widget build(BuildContext context) {
+    String amountInWords = convertAmountToWords(widget.amount.toInt());
     Size size = MediaQuery.of(context).size;
     return Scaffold(
       backgroundColor: Colors.black,
@@ -30,10 +134,7 @@ class _download_receiptsState extends State<download_receipts> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => receipts()),
-                        );
+                        Navigator.pop(context);
                       },
                       child: Image.asset(
                         'assets/images/My_Chits/back_arrow.png',
@@ -87,7 +188,7 @@ class _download_receiptsState extends State<download_receipts> {
                             ),
                           ),
                           Text(
-                            "Rajesh Kumar (#F02343)",
+                            "${widget.userName} (${widget.userID})",
                             textAlign: TextAlign.right,
                             style: GoogleFonts.urbanist(
                               fontSize: 10,
@@ -109,14 +210,6 @@ class _download_receiptsState extends State<download_receipts> {
                               color: Color(0xFF333333),
                             ),
                             overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            "RCP-2025-11-001",
-                            style: GoogleFonts.urbanist(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF333333),
-                            ),
                           ),
                         ],
                       ),
@@ -254,7 +347,7 @@ class _download_receiptsState extends State<download_receipts> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      "Transaction Id",
+                                      "Order Id",
                                       style: GoogleFonts.urbanist(
                                         fontSize: 9,
                                         fontWeight: FontWeight.w600,
@@ -262,7 +355,7 @@ class _download_receiptsState extends State<download_receipts> {
                                       ),
                                     ),
                                     Text(
-                                      "TXN2025110100123",
+                                      "${widget.orderId}",
                                       style: GoogleFonts.urbanist(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
@@ -279,7 +372,7 @@ class _download_receiptsState extends State<download_receipts> {
                                       ),
                                     ),
                                     Text(
-                                      "01 November 2025",
+                                      "${widget.date}",
                                       style: GoogleFonts.urbanist(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
@@ -288,7 +381,7 @@ class _download_receiptsState extends State<download_receipts> {
                                     ),
                                     const SizedBox(height: 12),
                                     Text(
-                                      "UPI Reference",
+                                      "Installment",
                                       style: GoogleFonts.urbanist(
                                         fontSize: 9,
                                         fontWeight: FontWeight.w600,
@@ -296,7 +389,7 @@ class _download_receiptsState extends State<download_receipts> {
                                       ),
                                     ),
                                     Text(
-                                      "432567890123",
+                                      "${widget.totaltimeperiod}/${widget.timeperiod}",
                                       style: GoogleFonts.urbanist(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
@@ -334,7 +427,7 @@ class _download_receiptsState extends State<download_receipts> {
                                       ),
                                     ),
                                     Text(
-                                      "2:30 PM IST",
+                                      "${widget.time}",
                                       style: GoogleFonts.urbanist(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
@@ -351,7 +444,7 @@ class _download_receiptsState extends State<download_receipts> {
                                       ),
                                     ),
                                     Text(
-                                      "Success",
+                                      "${widget.status}",
                                       style: GoogleFonts.urbanist(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
@@ -392,7 +485,7 @@ class _download_receiptsState extends State<download_receipts> {
                             ),
                             const SizedBox(height: 5),
                             Text(
-                              "₹10,000.00",
+                              "₹${widget.amount.toStringAsFixed(0)}",
                               style: GoogleFonts.urbanist(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -401,7 +494,7 @@ class _download_receiptsState extends State<download_receipts> {
                             ),
                             const SizedBox(height: 5),
                             Text(
-                              "Amount in words: Ten Thousand Six Hundred Ninety Rupees Only",
+                              "Amount in words: $amountInWords",
                               style: GoogleFonts.urbanist(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w600,
@@ -416,19 +509,27 @@ class _download_receiptsState extends State<download_receipts> {
 
                       // 🔹 Download Receipt Button
                       GestureDetector(
-                        onTap:  () async {
+                        onTap: () async {
+                          if (isDownloading) return; // Prevent multiple taps
+
+                          setState(() => isDownloading = true);
+
                           await ChitReceiptPDF(context, {
-                            'bookingId': '#GOLD4257',
-                            'customerName': 'Thanish Prakash',
-                            'customerId': '#FOX65432',
-                            'contactNumber': '+91 98765 43210',
-                            'transactionDate': '11 November 2025',
-                            'collectionMethod': 'Online',
-                            'goldDetails': '10g',
-                            'bookingDate': '11 November 2025',
-                            'storeLocation': 'Malabar - Gandhipuram, Coimbatore',
-                            'storeContact': '+91 80 6789 5432',
+                            'chitName': widget.chitName,
+                            'chitId': widget.chitID,
+                            'customerName': widget.userName,
+                            'customerId': widget.userID,
+                            'contactNumber': widget.mobilenumber ?? "",
+                            'transactionDate': widget.date,
+                            'transactionTime': widget.time,
+                            'installment': "${widget.totaltimeperiod}/${widget.timeperiod}",
+                            'orderId': widget.orderId,
+                            'paymentStatus': widget.status,
+                            'amount': widget.amount.toString(),
+                            'TotalAmountPaidWords': amountInWords,
                           });
+
+                          setState(() => isDownloading = false);
                         },
                         child: Container(
                           width: double.infinity,
@@ -441,26 +542,39 @@ class _download_receiptsState extends State<download_receipts> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Image.asset(
-                                  'assets/images/My_Chits/download.png',
-                                  width: 20,
-                                  height: 20,
-                                  fit: BoxFit.contain,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  "Download Receipt",
-                                  style: GoogleFonts.urbanist(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
+                                if (!isDownloading) ...[
+                                  Image.asset(
+                                    'assets/images/My_Chits/download.png',
+                                    width: 20,
+                                    height: 20,
                                   ),
-                                ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    "Download Receipt",
+                                    style: GoogleFonts.urbanist(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+
+                                if (isDownloading) ...[
+                                  SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
                         ),
                       ),
+
                     ],
                   ),
                 ),

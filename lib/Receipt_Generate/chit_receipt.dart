@@ -46,18 +46,7 @@ Future<void> ChitReceiptPDF(
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              // Booking ID top-right
-              pw.Align(
-                alignment: pw.Alignment.topRight,
-                child: pw.Text(
-                  "Booking ID: ${data['bookingId']}",
-                  style: pw.TextStyle(
-                    font: regularFont,
-                    fontSize: 10,
-                    color: textcolor,
-                  ),
-                ),
-              ),
+
               pw.SizedBox(height:50),
 
               // Customer Information Card
@@ -141,22 +130,6 @@ Future<void> ChitReceiptPDF(
                               ),
                             ),
                             pw.SizedBox(height: 6),
-                            pw.Text(
-                              "Transaction Date",
-                              style: pw.TextStyle(
-                                font: regularFont,
-                                fontSize: 11,
-                                color: PdfColor.fromHex('#808080'),
-                              ),
-                            ),
-                            pw.Text(
-                              data['transactionDate'],
-                              style: pw.TextStyle(
-                                font: boldFont,
-                                fontSize: 12,
-                                color: PdfColor.fromHex('#454040'),
-                              ),
-                            ),
                           ],
                         ),
                       ],
@@ -226,14 +199,14 @@ Future<void> ChitReceiptPDF(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       _detailRow(
-                        "Transaction ID",
-                        data['TransactionID'],
+                        "Order ID",
+                        data['orderId'],
                         boldFont,
                       ),
                       pw.SizedBox(height: 15),
                       _detailRow(
                         "Time",
-                        data['Time'],
+                        data['transactionTime'],
                         boldFont,
                       ),
                     ],
@@ -241,25 +214,15 @@ Future<void> ChitReceiptPDF(
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      _detailRow("Date", data['Date'], boldFont),
+                      _detailRow("Date", data['transactionDate'], boldFont),
                       pw.SizedBox(height: 15),
-                      _detailRow("Status", data['status'], boldFont),
+                      _detailRow("Status", data['paymentStatus'], boldFont),
                     ],
                   ),
                 ],
               ),
 
               pw.SizedBox(height: 50),
-              pw.Text(
-                "*Please bring a printed or digital copy of this receipt",
-                style: pw.TextStyle(
-                  font: regularFont,
-                  fontSize: 10,
-                  color: PdfColor.fromHex('#B64F4F'),
-                ),
-              ),
-
-              pw.SizedBox(height: 20),
              pw.Row(
                mainAxisAlignment:pw.MainAxisAlignment.spaceBetween,
                children: [
@@ -283,7 +246,7 @@ Future<void> ChitReceiptPDF(
                        ),
                        pw.SizedBox(height: 5,),
                        pw.Text(
-                         data['TotalAmountPaid'],
+                         data['amount'],
                          style: pw.TextStyle(
                            font: regularFont,
                            fontSize: 16,
@@ -323,7 +286,7 @@ Future<void> ChitReceiptPDF(
                          ),
                          pw.SizedBox(height: 5,),
                          pw.Text(
-                           data['ChitIdName'],
+                           "${data['chitId']}-${data['chitName']}",
                            style: pw.TextStyle(
                              font: regularFont,
                              fontSize: 12,
@@ -341,7 +304,7 @@ Future<void> ChitReceiptPDF(
                          ),
                          pw.SizedBox(height: 5,),
                          pw.Text(
-                           data['Installment'],
+                           data['installment'],
                            style: pw.TextStyle(
                              font: regularFont,
                              fontSize: 12,
@@ -374,7 +337,7 @@ Future<void> ChitReceiptPDF(
                 child: pw.Column(
                   children: [
                     pw.Text(
-                      "Fast Chic Funds – Official Receipt",
+                      "Foxl Chits and Funds Private Limited – Official Receipt",
                       style: pw.TextStyle(
                         color: PdfColor.fromHex('#808080'),
                         font: regularFont,
@@ -383,7 +346,7 @@ Future<void> ChitReceiptPDF(
                     ),
                     pw.SizedBox(height: 4),
                     pw.Text(
-                      "For any queries, please contact support at ${data['storeContact']}",
+                      "For any queries, please contact support at 00000000",
                       style: pw.TextStyle(
                         color: PdfColor.fromHex('#808080'),
                         font: regularFont,
@@ -409,12 +372,12 @@ Future<void> ChitReceiptPDF(
   } else {
     directory = await getApplicationDocumentsDirectory();
   }
-  final file = File('${directory.path}/Gold_Receipt_${data['bookingId']}.pdf');
+  final file = File('${directory.path}/Chit_Receipt_${data['bookingId']}.pdf');
   await file.writeAsBytes(bytes);
 
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
-      content: Text("✅ Gold receipt saved to ${directory.path}"),
+      content: Text("✅ Chit receipt saved to ${directory.path}"),
       backgroundColor: Colors.green,
     ),
   );

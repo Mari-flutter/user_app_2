@@ -4,14 +4,14 @@ import 'package:user_app/My_Chits/Explore_chits/processing_transfer_screen.dart'
 import 'package:user_app/My_Chits/Explore_chits/withdraw_for_chits_screen.dart';
 import 'instant_transfer_screen.dart';
 
-class add_account extends StatefulWidget {
-  const add_account({super.key});
+class add_account_for_chits extends StatefulWidget {
+  const add_account_for_chits({super.key});
 
   @override
-  State<add_account> createState() => _add_accountState();
+  State<add_account_for_chits> createState() => _add_account_for_chitsState();
 }
 
-class _add_accountState extends State<add_account> {
+class _add_account_for_chitsState extends State<add_account_for_chits> {
   final _formKey = GlobalKey<FormState>();
 
   final banknamecontroller = TextEditingController();
@@ -145,10 +145,7 @@ class _add_accountState extends State<add_account> {
                     children: [
                       GestureDetector(
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => withdraw_for_chits()),
-                          );
+                          Navigator.pop(context);
                         },
                         child: Image.asset(
                           'assets/images/My_Chits/back_arrow.png',

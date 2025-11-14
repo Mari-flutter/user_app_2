@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:user_app/My_Chits/Explore_chits/add_account_screen.dart';
+import 'package:user_app/My_Chits/Explore_chits/add_account_for_chits_screen.dart';
+import 'package:user_app/Services/secure_storage.dart';
 
 import 'explore_chit_screen.dart';
 
@@ -12,6 +13,21 @@ class withdraw_for_chits extends StatefulWidget {
 }
 
 class _withdraw_for_chitsState extends State<withdraw_for_chits> {
+  String? Username;
+  String? UserID;
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+  Future<void> _loadUserName() async {
+    final username = await SecureStorageService.getUserName();
+    final userId = await SecureStorageService.getUserId();
+    setState(() {
+      Username = username;
+      UserID = userId;
+    });
+  }
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -111,7 +127,7 @@ class _withdraw_for_chitsState extends State<withdraw_for_chits> {
                         ),
                         SizedBox(height: size.height * 0.035),
                         Text(
-                          '#FO2839 Dinesh Viswanathan',
+                          '${UserID?? 'UserID'} ${Username??'UserName'}',
                           style: GoogleFonts.urbanist(
                             textStyle: const TextStyle(
                               color: Color(0xffFFFFFF),
@@ -255,7 +271,7 @@ class _withdraw_for_chitsState extends State<withdraw_for_chits> {
                 ),
                 SizedBox(height: size.height*0.35),
                 GestureDetector(
-                  onTap: (){Navigator.push(context,MaterialPageRoute(builder: (context)=>add_account()));},
+                  onTap: (){Navigator.push(context,MaterialPageRoute(builder: (context)=>add_account_for_chits()));},
                   child: Container(
                     width: double.infinity,
                     height: 38,

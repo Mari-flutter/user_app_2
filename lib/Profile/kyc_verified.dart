@@ -69,35 +69,6 @@ class _kyc_verifiedState extends State<kyc_verified> {
                     ),
                   ),
                 ),
-                SizedBox(height: size.height * 0.02),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => HomeLayout( initialTab: 4, isKycCompleted: true),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1A1A1A),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 90,
-                      vertical: 10,
-                    ),
-                  ),
-                  child: const Text(
-                    "Go to Profile",
-                    style: TextStyle(
-                      color: Color(0xffFFFFFF),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                    ),
-                  ),
-                ),
               ],
             ),
           ),

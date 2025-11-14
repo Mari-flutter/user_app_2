@@ -1,19 +1,24 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:google_fonts/google_fonts.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-Future<void> GoldSellReceiptPDF(
-  BuildContext context,
-  Map<String, dynamic> data,
-) async {
+Future<void> GoldschemeReceiptPDF(
+    BuildContext context,
+    Map<String, dynamic> data,
+    ) async {
   final pageWidth =
       PdfPageFormat.a4.width - 2 * 18; // A4 width minus horizontal padding
   final pdf = pw.Document();
+
+  final bookingConfirmedImage = pw.MemoryImage(
+    (await rootBundle.load(
+      'assets/images/Investments/booking_confirmed.png',
+    )).buffer.asUint8List(),
+  );
   final alert = pw.MemoryImage(
     (await rootBundle.load(
       'assets/images/Investments/alert_2.png',
@@ -41,7 +46,8 @@ Future<void> GoldSellReceiptPDF(
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.SizedBox(height: 50),
+
+              pw.SizedBox(height:50),
 
               // Customer Information Card
               pw.Container(
@@ -59,7 +65,7 @@ Future<void> GoldSellReceiptPDF(
                       style: pw.TextStyle(
                         font: boldFont,
                         fontSize: 15,
-                        color: PdfColor.fromHex('#9F6E38'),
+                        color: PdfColor.fromHex('#676767'),
                       ),
                     ),
                     pw.SizedBox(height: 8),
@@ -85,10 +91,27 @@ Future<void> GoldSellReceiptPDF(
                                 color: PdfColor.fromHex('#454040'),
                               ),
                             ),
+                            pw.SizedBox(height: 6),
+                            pw.Text(
+                              "Contact Number",
+                              style: pw.TextStyle(
+                                font: regularFont,
+                                fontSize: 11,
+                                color: PdfColor.fromHex('#808080'),
+                              ),
+                            ),
+                            pw.Text(
+                              data['contactNumber'],
+                              style: pw.TextStyle(
+                                font: boldFont,
+                                fontSize: 12,
+                                color: PdfColor.fromHex('#454040'),
+                              ),
+                            ),
                           ],
                         ),
                         pw.Column(
-                          crossAxisAlignment: pw.CrossAxisAlignment.end,
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
                           children: [
                             pw.Text(
                               "Customer Id",
@@ -106,29 +129,8 @@ Future<void> GoldSellReceiptPDF(
                                 color: PdfColor.fromHex('#454040'),
                               ),
                             ),
+                            pw.SizedBox(height: 6),
                           ],
-                        ),
-                      ],
-                    ),
-                    pw.SizedBox(height: 6),
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text(
-                          "Contact Number",
-                          style: pw.TextStyle(
-                            font: regularFont,
-                            fontSize: 11,
-                            color: PdfColor.fromHex('#808080'),
-                          ),
-                        ),
-                        pw.Text(
-                          data['contactNumber'],
-                          style: pw.TextStyle(
-                            font: boldFont,
-                            fontSize: 12,
-                            color: PdfColor.fromHex('#454040'),
-                          ),
                         ),
                       ],
                     ),
@@ -153,7 +155,7 @@ Future<void> GoldSellReceiptPDF(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
                           pw.Text(
-                            "Gold Sale Completed",
+                            "Physical Gold Booking Confirmed",
                             style: pw.TextStyle(
                               font: boldFont,
                               fontSize: 13,
@@ -165,7 +167,7 @@ Future<void> GoldSellReceiptPDF(
                     ),
                     pw.SizedBox(height: 6),
                     pw.Text(
-                      "Your online gold has been sold successfully. The proceeds will be transferred to your account soon.",
+                      "Your payment has been received and processed successfully. Thank you for your transaction.",
                       style: pw.TextStyle(
                         color: PdfColor.fromHex('#808080'),
                         font: regularFont,
@@ -188,43 +190,133 @@ Future<void> GoldSellReceiptPDF(
               ),
               pw.SizedBox(height: 10),
               pw.Divider(color: PdfColor.fromHex('#C5C5C5'), height: 0.5),
-              pw.SizedBox(height: 20),
+              pw.SizedBox(height: 10),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  _detailRow(
-                    "Transfer Mode",
-                    data['collectionMethod'],
-                    boldFont,
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      _detailRow(
+                        "Gold",
+                        data['goldDetails'],
+                        boldFont,
+                      ),
+                      pw.SizedBox(height: 15),
+                      _detailRow(
+                        "Time",
+                        data['transactionTime'],
+                        boldFont,
+                      ),
+                    ],
                   ),
-                  _detailRowEnd("Transaction Date", data['transactionDate'], boldFont),
-                ],
-              ),
-              pw.SizedBox(height: 15),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  _detailRow("Gold Details", "${data['goldDetails']} g", boldFont),
-                  _detailRowEnd("Estimated Amount", "INR ${data['EstimatedAmount']}", boldFont),
-                ],
-              ),
-              pw.SizedBox(height: 20),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  _detailRow("Service Charge", "INR ${data['servicechagre']}", boldFont),
-                  _detailRowEnd(
-                    "Credit Timeline",
-                    "Within 3 working days from the date of sale",
-                    boldFont,
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      _detailRowEnd("Maturity Date", data['maturityDate'], boldFont),
+                      pw.SizedBox(height: 15),
+                      _detailRowEnd("Date", data['transactionDate'], boldFont),
+                    ],
                   ),
                 ],
               ),
+
               pw.SizedBox(height: 50),
-              pw.Divider(color: PdfColor.fromHex('#7B5326'), height: 0.5),
+              pw.Row(
+                  mainAxisAlignment:pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Container(
+                      padding: const pw.EdgeInsets.all(20),
+                      width: 200,
+                      decoration: pw.BoxDecoration(
+                          color: PdfColor.fromHex('#EDF6FF'),
+                          borderRadius: pw.BorderRadius.circular(11)
+                      ),
+                      child:pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              "Total Invested",
+                              style: pw.TextStyle(
+                                font: regularFont,
+                                fontSize: 10,
+                                color: PdfColor.fromHex('#808080'),
+                              ),
+                            ),
+                            pw.SizedBox(height: 5,),
+                            pw.Text(
+                              data['totalinvested'],
+                              style: pw.TextStyle(
+                                font: regularFont,
+                                fontSize: 16,
+                                color: PdfColor.fromHex('#07C66A'),
+                              ),
+                            ),
+                            pw.SizedBox(height: 25,),
+                            pw.Text(
+                              data['amountinWords'],
+                              style: pw.TextStyle(
+                                font: regularFont,
+                                fontSize: 12,
+                                color: PdfColor.fromHex('#454040'),
+                              ),
+                            ),
+                          ]
+                      ),
+
+                    ),
+                    pw.Container(
+                      padding: const pw.EdgeInsets.all(20),
+                      width: 200,
+                      decoration: pw.BoxDecoration(
+                          color: PdfColor.fromHex('#EDF6FF'),
+                          borderRadius: pw.BorderRadius.circular(11)
+                      ),
+                      child:pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              "Scheme Name",
+                              style: pw.TextStyle(
+                                font: regularFont,
+                                fontSize: 10,
+                                color: PdfColor.fromHex('#808080'),
+                              ),
+                            ),
+                            pw.SizedBox(height: 5,),
+                            pw.Text(
+                              "${data['schemename']}",
+                              style: pw.TextStyle(
+                                font: regularFont,
+                                fontSize: 12,
+                                color: PdfColor.fromHex('#454040'),
+                              ),
+                            ),
+                            pw.SizedBox(height: 15,),
+                            pw.Text(
+                              "Installment",
+                              style: pw.TextStyle(
+                                font: regularFont,
+                                fontSize: 10,
+                                color: PdfColor.fromHex('#808080'),
+                              ),
+                            ),
+                            pw.SizedBox(height: 5,),
+                            pw.Text(
+                              data['intsallment'],
+                              style: pw.TextStyle(
+                                font: regularFont,
+                                fontSize: 12,
+                                color: PdfColor.fromHex('#454040'),
+                              ),
+                            ),
+                          ]
+                      ),
+
+                    )
+                  ]
+              ),
               pw.SizedBox(height: 20),
               pw.Row(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -254,7 +346,7 @@ Future<void> GoldSellReceiptPDF(
                     ),
                     pw.SizedBox(height: 4),
                     pw.Text(
-                      "For any queries, please contact support at ${data['storeContact']}",
+                      "For any queries, please contact support at 00000000",
                       style: pw.TextStyle(
                         color: PdfColor.fromHex('#808080'),
                         font: regularFont,
@@ -272,31 +364,7 @@ Future<void> GoldSellReceiptPDF(
   );
 
   final bytes = await pdf.save();
-  void _showSmoothSnackBar(String message) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Center(
-          child: Text(
-            message,
-            style: GoogleFonts.urbanist(
-              color: const Color(0xff141414),
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-            ),
-          ),
-        ),
-        backgroundColor: const Color(0xffD4B373),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
   // Save file
   Directory directory;
   if (Platform.isAndroid) {
@@ -304,30 +372,40 @@ Future<void> GoldSellReceiptPDF(
   } else {
     directory = await getApplicationDocumentsDirectory();
   }
-  final file = File('${directory.path}/Gold_Receipt_${DateTime.now().millisecondsSinceEpoch}.pdf');
+  final file = File('${directory.path}/Gold_Scheme_Receipt_${data['bookingId']}.pdf');
   await file.writeAsBytes(bytes);
 
-  _showSmoothSnackBar("✅ Gold receipt saved to ${directory.path}");
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text("✅ Gold Scheme receipt saved to ${directory.path}"),
+      backgroundColor: Colors.green,
+    ),
+  );
 
   await OpenFilex.open(file.path);
 }
 
-// Helper for displaying detail rows
-pw.Widget _detailRow(String label, String value, pw.Font boldFont) {
+pw.Widget _detailRow(String label, dynamic value, pw.Font boldFont) {
   return pw.Column(
     crossAxisAlignment: pw.CrossAxisAlignment.start,
     children: [
       pw.Text(label, style: pw.TextStyle(fontSize: 10)),
-      pw.Text(value, style: pw.TextStyle(fontSize: 11, font: boldFont)),
+      pw.Text(
+        value?.toString() ?? '',
+        style: pw.TextStyle(fontSize: 11, font: boldFont),
+      ),
     ],
   );
 }
-pw.Widget _detailRowEnd(String label, String value, pw.Font boldFont) {
+pw.Widget _detailRowEnd(String label, dynamic value, pw.Font boldFont) {
   return pw.Column(
     crossAxisAlignment: pw.CrossAxisAlignment.end,
     children: [
       pw.Text(label, style: pw.TextStyle(fontSize: 10)),
-      pw.Text(value, style: pw.TextStyle(fontSize: 11, font: boldFont)),
+      pw.Text(
+        value?.toString() ?? '',
+        style: pw.TextStyle(fontSize: 11, font: boldFont),
+      ),
     ],
   );
 }

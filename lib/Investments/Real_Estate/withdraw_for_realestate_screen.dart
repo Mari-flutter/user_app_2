@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:user_app/Investments/Real_Estate/real_estate_investment_screen.dart';
-import 'package:user_app/My_Chits/Explore_chits/add_account_screen.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shimmer/shimmer.dart';
+
+import 'RE_add_account.dart';
 
 class withdraw_for_realestate extends StatefulWidget {
   const withdraw_for_realestate({super.key});
@@ -315,7 +315,14 @@ class _withdraw_for_realestateState extends State<withdraw_for_realestate> {
                 SizedBox(height: size.height * 0.35),
                 GestureDetector(
                   onTap: isLoading ? null : () {
-                    Navigator.push(context,MaterialPageRoute(builder: (context)=>const add_account()));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => RE_add_account(
+                          withdrawalAmount: valletAmount, // Pass the amount here
+                        ),
+                      ),
+                    );
                   },
                   child: Container(
                     width: double.infinity,

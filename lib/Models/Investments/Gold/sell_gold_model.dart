@@ -11,7 +11,7 @@ class SellGoldModel {
 
   Map<String, dynamic> toJson() {
     return {
-      "userId": userId,
+      "profileId": userId,
       "amount": amount,
       "type": type,
     };
