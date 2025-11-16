@@ -8,7 +8,9 @@ import 'package:http/http.dart' as http;
 import 'package:user_app/Profile/kyc_verified.dart';
 
 import '../Models/Profile/set_up_profile.dart';
+import 'Didit_web.dart';
 import 'animation_screen.dart';
+
 
 class setup_profile extends StatefulWidget {
   final VoidCallback? onKycCompleted; // 👈 add this line
@@ -256,7 +258,7 @@ class _setup_profileState extends State<setup_profile> {
 
   Future<void> saveFcmToken() async {
     if (profileId == null || _fcmToken == null) {
-      print("⚠️ Cannot save FCM token — missing profileId or token");
+      print("⚠ Cannot save FCM token — missing profileId or token");
       return;
     }
 
@@ -333,6 +335,8 @@ class _setup_profileState extends State<setup_profile> {
       rethrow;
     }
   }
+
+
 
 
   @override
@@ -625,12 +629,12 @@ class _setup_profileState extends State<setup_profile> {
   }
 
   inputTextField(
-    String hintText,
-    TextEditingController controller,
-    String? Function(String?) validator, {
-    Widget? suffixIcon,
-    bool obscureText = false,
-  }) {
+      String hintText,
+      TextEditingController controller,
+      String? Function(String?) validator, {
+        Widget? suffixIcon,
+        bool obscureText = false,
+      }) {
     return TextFormField(
       controller: controller,
       validator: validator,
@@ -1036,23 +1040,42 @@ class _setup_profileState extends State<setup_profile> {
         // -----------------------------
         // API CALL
         // -----------------------------
-        await updateProfile(setupProfileData);
+        try {
+          // 1️⃣ PUT API: Save all updated profile details first
+          await updateProfile(setupProfileData);
 
-        await saveFcmToken();
-        final kycUrl = await getDiditSessionUrl(profileId!);
+          // 2️⃣ POST FCM token (if not done in init)
+          await saveFcmToken();
 
+          // 3️⃣ Call KYC API to get the session URL
+          final kycUrl = await getDiditSessionUrl(profileId!);
 
-        // NAVIGATE
-        await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const kyc_verified()),
-        );
+          // 4️⃣ Navigate to the In-App Webview screen
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DiditKYCWebviewScreen(
+                kycUrl: kycUrl,
+                profileID: profileId!, // Pass the ID
+              ),
+            ),
+          );
 
-        if (widget.onKycCompleted != null) {
-          widget.onKycCompleted!();
+          // 5️⃣ Notify parent/pop back (This happens AFTER the KYC webview is closed)
+          if (widget.onKycCompleted != null) {
+            widget.onKycCompleted!();
+          }
+
+          // Since the KYC Webview screen handles popping itself upon completion/failure,
+          // we should not pop here unless we want to close this setup screen immediately.
+          // Let's assume you want to remain here until the user is manually verified
+          // and the parent handles the final navigation based on status.
+
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("KYC setup failed: ${e.toString().split(':').last.trim()}")),
+          );
         }
-
-        Navigator.pop(context);
       },
 
       child: Container(

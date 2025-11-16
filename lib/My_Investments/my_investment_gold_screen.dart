@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:user_app/Investments/Gold/gold_investment_screen.dart';
-import 'package:user_app/Receipt_Generate/sell_gold_receipt.dart';
 
 import '../Helper/Local_storage_manager.dart';
 import '../Investments/Gold/Get Physical Gold/get_physical_gold_screen.dart';

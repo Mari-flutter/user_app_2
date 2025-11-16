@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:shimmer/shimmer.dart';
 
 import '../Models/Investments/Realestate/real_estate_transaction_model.dart';
 
@@ -10,10 +11,12 @@ class transactions_history_for_real_estatement extends StatefulWidget {
   const transactions_history_for_real_estatement({super.key});
 
   @override
-  State<transactions_history_for_real_estatement> createState() => _transactions_history_for_real_estatementState();
+  State<transactions_history_for_real_estatement> createState() =>
+      _transactions_history_for_real_estatementState();
 }
 
-class _transactions_history_for_real_estatementState extends State<transactions_history_for_real_estatement> {
+class _transactions_history_for_real_estatementState
+    extends State<transactions_history_for_real_estatement> {
   List<RealEstateTxModel> transactions = [];
   bool isLoading = true;
 
@@ -35,9 +38,8 @@ class _transactions_history_for_real_estatementState extends State<transactions_
         final List data = jsonDecode(response.body);
 
         setState(() {
-          transactions = data
-              .map((json) => RealEstateTxModel.fromJson(json))
-              .toList();
+          transactions =
+              data.map((json) => RealEstateTxModel.fromJson(json)).toList();
           isLoading = false;
         });
       } else {
@@ -49,16 +51,41 @@ class _transactions_history_for_real_estatementState extends State<transactions_
     }
   }
 
+  // ⭐ SHIMMER LOADER
+  Widget shimmerLoader(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 5,
+      itemBuilder: (context, index) {
+        return Column(
+          children: [
+            Shimmer.fromColors(
+              baseColor: Colors.grey.shade800,
+              highlightColor: Colors.grey.shade600,
+              child: Container(
+                width: double.infinity,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade900,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+              ),
+            ),
+            SizedBox(height: size.height * 0.015),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
-    if (isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.white),
-      );
-    }
+    if (isLoading) return shimmerLoader(context);
 
     if (transactions.isEmpty) {
       return Center(
@@ -71,17 +98,15 @@ class _transactions_history_for_real_estatementState extends State<transactions_
 
     return ListView.builder(
       shrinkWrap: true,
-      // ← Let ListView take minimal height
       physics: const NeverScrollableScrollPhysics(),
-      // ← Disable scrolling inside parent
       itemCount: transactions.length,
       itemBuilder: (context, index) {
         final tx = transactions[index];
 
-        // Convert API fields to UI fields
         String title = "Real Estate Investment";
         String date = tx.dateTime.split("T")[0];
         String amount = "₹${tx.amount.toStringAsFixed(2)}";
+
         return Column(
           children: [
             Container(
@@ -93,7 +118,7 @@ class _transactions_history_for_real_estatementState extends State<transactions_
               ),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(11),
-                color: Color(0xff2C2C2C),
+                color: const Color(0xff2C2C2C),
               ),
               child: Row(
                 children: [
@@ -111,7 +136,7 @@ class _transactions_history_for_real_estatementState extends State<transactions_
                       Text(
                         title,
                         style: GoogleFonts.urbanist(
-                          color: const Color(0xffFFFFFF),
+                          color: Colors.white,
                           fontSize: 17,
                           fontWeight: FontWeight.w600,
                         ),
@@ -119,19 +144,18 @@ class _transactions_history_for_real_estatementState extends State<transactions_
                       Text(
                         date,
                         style: GoogleFonts.urbanist(
-                          color: const Color(0xffFFFFFF),
+                          color: Colors.white,
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
-                  Spacer(),
+                  const Spacer(),
                   Text(
-                    tx.status?
-                    "- $amount": "+ $amount",
+                    tx.status ? "- $amount" : "+ $amount",
                     style: GoogleFonts.urbanist(
-                      color: const Color(0xffFFFFFF),
+                      color: Colors.white,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),

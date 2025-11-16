@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:shimmer/shimmer.dart';
 
 import '../Models/Investments/Gold/gold_transaction_model.dart';
 import '../Services/secure_storage.dart';
@@ -11,13 +12,16 @@ class transactions_history_for_gold extends StatefulWidget {
   const transactions_history_for_gold({super.key});
 
   @override
-  State<transactions_history_for_gold> createState() => _transactions_history_for_goldState();
+  State<transactions_history_for_gold> createState() =>
+      _transactions_history_for_goldState();
 }
 
-class _transactions_history_for_goldState extends State<transactions_history_for_gold> {
+class _transactions_history_for_goldState
+    extends State<transactions_history_for_gold> {
   String? profileId;
   List<GoldTransaction> allTransactions = [];
   bool isLoading = true;
+
   @override
   void initState() {
     super.initState();
@@ -35,6 +39,7 @@ class _transactions_history_for_goldState extends State<transactions_history_for
 
     await loadTransactions();
   }
+
   Future<void> loadTransactions() async {
     final buyUrl =
         "https://foxlchits.com/api/PaymentHistory/buy-profile/$profileId";
@@ -46,9 +51,6 @@ class _transactions_history_for_goldState extends State<transactions_history_for
     try {
       final buyRes = await http.get(Uri.parse(buyUrl));
       final sellRes = await http.get(Uri.parse(sellUrl));
-
-      print("BUY: ${buyRes.body}");
-      print("SELL: ${sellRes.body}");
 
       if (buyRes.statusCode == 200) {
         List buy = jsonDecode(buyRes.body);
@@ -78,30 +80,61 @@ class _transactions_history_for_goldState extends State<transactions_history_for
       return {
         "title": t.type == "buy" ? "Gold Purchased" : "Gold Sold",
         "date": t.dateTime.toLocal().toString().split(" ")[0],
-        "amount": t.type == "buy"
-            ? "- ₹${t.amount}"
-            : "+ ₹${t.amount}",
+        "amount":
+        t.type == "buy" ? "- ₹${t.amount}" : "+ ₹${t.amount}",
         "type": t.type == "buy" ? "debited" : "credited",
-        "gram": "${t.goldGrams} g"
+        "gram": "${t.goldGrams} g",
       };
     }).toList();
   }
 
+  // ⭐ SHIMMER WIDGET
+  Widget shimmerLoader(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 5,
+      itemBuilder: (context, index) {
+        return Column(
+          children: [
+            Shimmer.fromColors(
+              baseColor: Colors.grey.shade800,
+              highlightColor: Colors.grey.shade600,
+              child: Container(
+                height: 58,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade900,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+              ),
+            ),
+            SizedBox(height: size.height * 0.015),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    if (isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.white),
-      );
-    }
+
+    if (isLoading) return shimmerLoader(context);
+
     final txList = uiList;
-    return ListView.builder(
+
+    return txList.isEmpty
+        ? const Center(
+      child: Text(
+        "No gold transactions found",
+        style: TextStyle(color: Colors.white),
+      ),
+    )
+        : ListView.builder(
       shrinkWrap: true,
-      // ← Let ListView take minimal height
       physics: const NeverScrollableScrollPhysics(),
-      // ← Disable scrolling inside parent
       itemCount: txList.length,
       itemBuilder: (context, index) {
         final tx = txList[index];
@@ -116,12 +149,12 @@ class _transactions_history_for_goldState extends State<transactions_history_for
               ),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(11),
-                color: Color(0xff2C2C2C),
+                color: const Color(0xff2C2C2C),
               ),
               child: Row(
                 children: [
                   Image.asset(
-                    txList[index]["type"] == "debited"
+                    tx["type"] == "debited"
                         ? "assets/images/Transactions/debited.png"
                         : "assets/images/Transactions/credited.png",
                     width: 20,
@@ -134,7 +167,7 @@ class _transactions_history_for_goldState extends State<transactions_history_for
                       Text(
                         tx["title"],
                         style: GoogleFonts.urbanist(
-                          color: const Color(0xffFFFFFF),
+                          color: Colors.white,
                           fontSize: 17,
                           fontWeight: FontWeight.w600,
                         ),
@@ -142,21 +175,21 @@ class _transactions_history_for_goldState extends State<transactions_history_for
                       Text(
                         tx["date"],
                         style: GoogleFonts.urbanist(
-                          color: const Color(0xffFFFFFF),
+                          color: Colors.white,
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
-                  Spacer(),
+                  const Spacer(),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
                         tx["amount"],
                         style: GoogleFonts.urbanist(
-                          color: const Color(0xffFFFFFF),
+                          color: Colors.white,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
@@ -164,7 +197,7 @@ class _transactions_history_for_goldState extends State<transactions_history_for
                       Text(
                         tx["gram"],
                         style: GoogleFonts.urbanist(
-                          color: const Color(0xffFFFFFF),
+                          color: Colors.white,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
