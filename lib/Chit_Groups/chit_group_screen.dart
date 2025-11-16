@@ -23,6 +23,7 @@ class chit_groups extends StatefulWidget {
 }
 
 class _chit_groupsState extends State<chit_groups> {
+  Map<String, bool> _joinLoading = {};
   bool isKycLoading = true;
   bool isKycCompleted = false;
   int? _highlightChitIndex;
@@ -63,11 +64,12 @@ class _chit_groupsState extends State<chit_groups> {
   @override
   void initState() {
     super.initState();
-    RequestedChitNotifier.init();
-    SecureStorageService.updateUserAndReferIdsFromApi();
+    RequestedChitNotifier.init(); // loads hive
+    loadServerRequestedChits();  // sync server → local
     _loadKycStatus();
     _loadChitsWithCache();
   }
+
 
   Future<void> _loadChitsWithCache() async {
     final cached = LocalStorageManager.getActiveUpcomingChits();
@@ -85,11 +87,17 @@ class _chit_groupsState extends State<chit_groups> {
   }
 
   Future<void> _fetchChitsFromApi() async {
+    final Token = await SecureStorageService.getToken();
     try {
       final url = Uri.parse(
         'https://foxlchits.com/api/MainBoard/ChitsCreate/active-upcoming',
+
       );
-      final response = await http.get(url);
+      print("chit :$url");
+      final response = await http.get(url, headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -115,11 +123,15 @@ class _chit_groupsState extends State<chit_groups> {
   }
 
   Future<void> _refreshChitsInBackground() async {
+    final Token = await SecureStorageService.getToken();
     try {
       final url = Uri.parse(
         'https://foxlchits.com/api/MainBoard/ChitsCreate/active-upcoming',
       );
-      final response = await http.get(url);
+      final response = await http.get(url, headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         final chits = data.map((e) => Chit_Group_Model.fromJson(e)).toList();
@@ -162,11 +174,16 @@ class _chit_groupsState extends State<chit_groups> {
 
   Future<void> _loadKycStatus() async {
     final id = await storage.read(key: 'profileId');
+    final Token = await SecureStorageService.getToken();
 
     if (id != null && id.isNotEmpty) {
       try {
         final response = await http.get(
           Uri.parse("https://foxlchits.com/api/Profile/profile/$id"),
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer $Token",
+          },
         );
 
         if (response.statusCode == 200) {
@@ -197,26 +214,28 @@ class _chit_groupsState extends State<chit_groups> {
 
   Future<void> _requestToJoinChit(String chitId) async {
     try {
-      // ✅ Read stored user and refer IDs
+      // Start loading
+      setState(() {
+        _joinLoading[chitId] = true;
+      });
+
       final userId = await SecureStorageService.getUserId();
       final referId = await SecureStorageService.getReferId();
+      final Token = await SecureStorageService.getToken();
 
       if (userId == null || userId.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("User info missing. Please login again."),
-          ),
-        );
+        showBlueSnack(context, "User info missing. Please login again.");
+        setState(() {
+          _joinLoading[chitId] = false;
+        });
         return;
       }
 
-      // ✅ Build query parameters dynamically
       final Map<String, String> queryParams = {
         'chitId': chitId,
         'userID': userId,
       };
 
-      // 👇 Only include referId if it exists and valid
       if (referId != null && referId.isNotEmpty && referId != 'null') {
         queryParams['referId'] = referId;
       }
@@ -226,39 +245,91 @@ class _chit_groupsState extends State<chit_groups> {
         '/api/JoinToChit/request-join',
         queryParams,
       );
-      print("🔗 Joining Chit: $url");
 
-      // ✅ Make POST request
-      final response = await http.post(url);
+      final response = await http.post(url, headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      });
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Successfully requested to join the chit!"),
-          ),
-        );
+        final data = jsonDecode(response.body);
 
-        RequestedChitNotifier.addRequestedChit({
-          "chitsName": _filteredChits!
-              .firstWhere((c) => c.id == chitId)
-              .chitsName,
-        });
-        setState(() {});
-      } else {
-        print("❌ Join request failed: ${response.body}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Failed to join chit: ${response.reasonPhrase}"),
-          ),
-        );
+        if (data["status"] == "UserConfirmed") {
+          showBlueSnack(context, data["message"]);
+        } else {
+          showBlueSnack(context, "Successfully requested to join!");
+          RequestedChitNotifier.addRequestedChit({
+            "chitsName": _filteredChits!
+                .firstWhere((c) => c.id == chitId)
+                .chitsName,
+          });
+        }
       }
+
     } catch (e) {
-      print("⚠️ Error in join request: $e");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Something went wrong: $e")));
+      showBlueSnack(context, "Something went wrong: $e");
+    } finally {
+      setState(() {
+        _joinLoading[chitId] = false;
+      });
     }
   }
+
+
+
+  Future<void> loadServerRequestedChits() async {
+    final userId = await SecureStorageService.getUserId();
+    final Token = await SecureStorageService.getToken();
+
+    final url = Uri.https(
+      'foxlchits.com',
+      '/api/JoinToChit/get-requests-by-user',
+      {'userID': userId},
+    );
+
+    final response = await http.get(url, headers: {
+      "Authorization": "Bearer $Token",
+    });
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+
+      for (var item in data) {
+        RequestedChitNotifier.addRequestedChit({
+          "chitsName": item["chitsName"],
+        });
+      }
+
+      print("🔄 Synced requested chits from server: ${data.length}");
+    }
+  }
+
+
+  void showBlueSnack(BuildContext context, String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        content: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xff3A7AFF),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(
+            child: Text(
+              msg,
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ),
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -375,11 +446,12 @@ class _chit_groupsState extends State<chit_groups> {
                         return Padding(
                           padding: EdgeInsets.only(bottom: size.height * 0.02),
                           child: ChitCardDynamic(
-                            chit: chit,
-                            isHighlighted: _highlightChitIndex == index,
-                            isKycCompleted: isKycCompleted,
-                            isKycLoading: isKycLoading,
-                          ),
+                          chit: chit,
+                          isHighlighted: _highlightChitIndex == index,
+                          isKycCompleted: isKycCompleted,
+                          isKycLoading: isKycLoading,
+                          isJoinLoading: _joinLoading[chit.id] ?? false,
+                        ),
                         );
                       }).toList(),
                     ),
@@ -488,13 +560,17 @@ class ChitCardDynamic extends StatelessWidget {
   final bool isKycCompleted;
   final bool isKycLoading;
 
+  final bool isJoinLoading;
+
   const ChitCardDynamic({
     super.key,
     required this.chit,
     required this.isHighlighted,
     required this.isKycCompleted,
     required this.isKycLoading,
+    required this.isJoinLoading,
   });
+
 
   @override
   Widget build(BuildContext context) {
@@ -602,7 +678,18 @@ class ChitCardDynamic extends StatelessWidget {
                         : const Color(0xffFFFFFF),
                   ),
                   child: Center(
-                    child: Text(
+                    child: isJoinLoading
+                        ? SizedBox(
+                      height: 14,
+                      width: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: isRequested
+                            ? Colors.white70
+                            : Colors.black,
+                      ),
+                    )
+                        : Text(
                       status,
                       style: GoogleFonts.urbanist(
                         color: isRequested

@@ -22,6 +22,7 @@ class ActiveChit {
   final double otherCharges;
   final double penalty;
   final double taxes;
+  final double commission;
   final int totalMember;
   final int availableSpots;
   final int timePeriod;
@@ -45,6 +46,7 @@ class ActiveChit {
     required this.otherCharges,
     required this.penalty,
     required this.taxes,
+    required this.commission,
     required this.totalMember,
     required this.availableSpots,
     required this.timePeriod,
@@ -65,6 +67,7 @@ class ActiveChit {
     otherCharges: (json["otherCharges"] ?? 0).toDouble(),
     penalty: (json["penalty"] ?? 0).toDouble(),
     taxes: (json["taxes"] ?? 0).toDouble(),
+    commission: (json["commission"]??0).toDouble(),
     totalMember: json["totalMember"] ?? 0,
     availableSpots: json["availableSpots"] ?? 0,
     timePeriod: json["timePeriod"] ?? 0,
@@ -84,6 +87,7 @@ class ActiveChit {
     "otherCharges": otherCharges,
     "penalty": penalty,
     "taxes": taxes,
+    "commission":commission,
     "totalMember": totalMember,
     "availableSpots": availableSpots,
     "timePeriod": timePeriod,

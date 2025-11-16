@@ -38,11 +38,15 @@ class _attach_fileState extends State<attach_file> {
         setState(() => _isLoading = false);
         return;
       }
-
+      final Token = await SecureStorageService.getToken();
       final url = Uri.parse(
         "https://foxlchits.com/api/Auctionwinner/my-documents/$profileId",
       );
-      final response = await http.get(url);
+      print(url);
+      final response = await http.get(url,headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
 
       if (response.statusCode == 200) {
         final List data = jsonDecode(response.body);
@@ -59,12 +63,13 @@ class _attach_fileState extends State<attach_file> {
 
           return MyDocument(
             id: d.id,
+            documentTypeId: d.documentTypeId,
             documentType: d.documentType,
             documentPath: normalizedPath,
             status: d.status,
             uploadedAt: d.uploadedAt,
             verifiedAt: d.verifiedAt,
-            documentTypeId: d.documentTypeId,
+            approvals: d.approvals,   // ✅ KEEP ORIGINAL APPROVALS
           );
         }).toList();
 
@@ -111,16 +116,19 @@ class _attach_fileState extends State<attach_file> {
       builder: (_) =>
       const Center(child: CircularProgressIndicator(color: Colors.white)),
     );
-
+    final Token = await SecureStorageService.getToken();
     try {
       final url = Uri.parse(
         "https://foxlchits.com/api/Auctionwinner/upload-document",
       );
-      final request = http.MultipartRequest('POST', url);
+      final request = http.MultipartRequest('POST', url,);
 
       request.fields['ProfileId'] = profileId;
       request.fields['DocumentTypeId'] = documentTypeId;
       request.files.add(await http.MultipartFile.fromPath('File', filePath));
+      request.headers.addAll({
+        "Authorization": "Bearer $Token",
+      });
 
       final response = await request.send();
       Navigator.pop(context);
@@ -172,9 +180,13 @@ class _attach_fileState extends State<attach_file> {
   Future<void> _viewFile(MyDocument doc) async {
     if (doc.documentPath != null && doc.documentPath!.isNotEmpty) {
       try {
+        final Token = await SecureStorageService.getToken();
         final url = "https://foxlchits.com${doc.documentPath}";
         final uri = Uri.parse(url);
-        final response = await http.get(uri);
+        final response = await http.get(uri,headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $Token",
+        },);
 
         if (response.statusCode == 200) {
           final dir = await getTemporaryDirectory();
@@ -250,7 +262,7 @@ class _attach_fileState extends State<attach_file> {
                       isUploaded: isUploaded,
                       onAdd: () => _pickFile(doc),
                       onView: () => _viewFile(doc),
-                      status: doc.status,
+                      status: doc.approvals.any((a) => a.isApproved) ? "Verified" : doc.status,
                     ),
                   );
                 }).toList(),

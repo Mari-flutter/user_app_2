@@ -14,6 +14,7 @@ import '../Models/Investments/Gold/CurrentGoldValue_Model.dart';
 import '../Models/Investments/Gold/user_hold_gold_model.dart';
 import '../Services/Gold_holdings.dart';
 import '../Services/Gold_price.dart';
+import '../Services/secure_storage.dart';
 
 class investment extends StatefulWidget {
   const investment({super.key});
@@ -48,12 +49,15 @@ class _investmentState extends State<investment> {
       print("❌ Error: Profile ID not found in secure storage.");
       return;
     }
-
+    final Token = await SecureStorageService.getToken();
     // 🔑 USE THE DYNAMICALLY RETRIEVED PROFILE ID
     final String apiUrl = "https://foxlchits.com/api/JoinToREInvestment/by-profile/$profileId";
 
     try {
-      final response = await http.get(Uri.parse(apiUrl));
+      final response = await http.get(Uri.parse(apiUrl),headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
 
       print("⭐ Summary API Status Code: ${response.statusCode}");
       print("⭐ Summary API Response: ${response.body}");

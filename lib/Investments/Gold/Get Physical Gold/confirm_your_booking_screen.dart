@@ -5,6 +5,7 @@ import 'dart:convert'; // Import dart:convert for JSON encoding
 import 'package:user_app/Models/Investments/Gold/store_model.dart';
 import 'package:user_app/Services/secure_storage.dart';
 
+import '../../../Models/Investments/Gold/CurrentGoldValue_Model.dart';
 import 'confirmation_receipts_screen.dart';
 
 // You'll likely need to import your local storage helper here
@@ -15,13 +16,15 @@ class confirm_your_booking extends StatefulWidget {
   final double selectedGrams;
   final double EstimatedValue;
   final String Storecontact;
+  final CurrentGoldValue? goldvalue;
 
   const confirm_your_booking({
     super.key,
     required this.selectedStore,
     required this.selectedGrams,
     required this.EstimatedValue,
-    required this.Storecontact
+    required this.Storecontact,
+    required this.goldvalue,
   });
 
   @override
@@ -47,28 +50,35 @@ class _confirm_your_bookingState extends State<confirm_your_booking> {
   // 1. API Confirmation Logic
   // =======================================================
   Future<void> _confirmBooking() async {
+    final Token = await SecureStorageService.getToken();
     final profileId = await SecureStorageService.getProfileId();
-    if (_isConfirming) return; // Prevent multiple taps
+    if (_isConfirming) return;
 
     setState(() {
       _isConfirming = true;
     });
 
-    // 1. Prepare the JSON Payload
-    final Map<String, dynamic> requestBody = {
-      "profileId": profileId, // Replace with actual user ID
-      "goldShopId": widget.selectedStore.id, // ID of the selected store
-      "goldGram": widget.selectedGrams, // Grams to convert
-    };
+    // ✅ Calculate final grams
+    final double pricePerGram = widget.goldvalue?.goldValue ?? 0.0;
+    final double finalAmount = widget.EstimatedValue - _platformFee;
+    final double finalGoldGram =
+    pricePerGram > 0 ? (finalAmount / pricePerGram) : 0.0;
 
-    print('Sending Request: $requestBody');
+    print("💸 Final Amount (after fee): $finalAmount");
+    print("🏅 Final Gold Gram sent to API: $finalGoldGram");
+
+    final Map<String, dynamic> requestBody = {
+      "profileId": profileId,
+      "goldShopId": widget.selectedStore.id,
+      "goldGram": finalGoldGram,
+    };
 
     try {
       final response = await http.post(
         Uri.parse(_API_URL),
         headers: {
-          'Content-Type': 'application/json',
-          // Add Authorization header if required, e.g., 'Authorization': 'Bearer $token'
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $Token",
         },
         body: jsonEncode(requestBody),
       );
@@ -76,32 +86,21 @@ class _confirm_your_bookingState extends State<confirm_your_booking> {
       if (!mounted) return;
 
       if (response.statusCode == 200) {
-        // Successful API call
-        print('Booking Confirmed Successfully. Response: ${response.body}');
-
-        // 2. Navigate to Confirmation Receipts Screen on success
         Navigator.pushReplacement(
-          // Use pushReplacement to prevent going back to this screen
           context,
           MaterialPageRoute(
             builder: (context) => confirmation_receipts(
               store: widget.selectedStore.shopName,
-              selectedGrams: widget.selectedGrams,
-              storecontact :widget.Storecontact,
-              storelocation:widget.selectedStore.address,
+              selectedGrams: finalGoldGram, // ✔ Send final grams to UI also
+              storecontact: widget.Storecontact,
+              storelocation: widget.selectedStore.address,
             ),
           ),
         );
       } else {
-        // Handle API errors (4xx or 5xx status codes)
-        print(
-          'API Error. Status: ${response.statusCode}, Body: ${response.body}',
-        );
         _showErrorSnackBar('Booking failed. Please try again.');
       }
     } catch (e) {
-      // Handle network or decoding errors
-      print('Network Error: $e');
       _showErrorSnackBar('Network error. Check your connection.');
     } finally {
       if (mounted) {
@@ -111,6 +110,7 @@ class _confirm_your_bookingState extends State<confirm_your_booking> {
       }
     }
   }
+
 
   // Helper method to display errors
   void _showErrorSnackBar(String message) {
@@ -132,7 +132,14 @@ class _confirm_your_bookingState extends State<confirm_your_booking> {
 
     final double grams = widget.selectedGrams;
     final String storeName = widget.selectedStore.shopName;
-    // final String storeId = widget.selectedStore.id; // Not used in UI now
+
+    final double pricePerGram = widget.goldvalue?.goldValue ?? 0.0;
+
+// 🔥 NEW CALCULATIONS
+    final double finalAmount = widget.EstimatedValue - _platformFee;
+    final double finalGrams = pricePerGram > 0 ? (finalAmount / pricePerGram) : 0.0;
+
+
 
     return Scaffold(
       backgroundColor: const Color(0xff000000),
@@ -376,7 +383,7 @@ class _confirm_your_bookingState extends State<confirm_your_booking> {
                                     ),
                                   ),
                                   Text(
-                                    '${grams.toStringAsFixed(2)} g',
+                                    '${finalGrams.toStringAsFixed(2)} g',
                                     style: GoogleFonts.urbanist(
                                       textStyle: const TextStyle(
                                         color: Color(0xffD1AF74),

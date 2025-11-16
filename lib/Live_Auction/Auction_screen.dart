@@ -719,8 +719,8 @@ class _auction_screenState extends State<auction_screen> {
 
                   SizedBox(height: size.height * 0.02),
                   Text(
-                    "*Minimum Bed Starts from ₹${widget.minBid.toStringAsFixed(
-                        0)}/- and Maximum ₹${widget.maxBid.toStringAsFixed(
+                    "*Minimum Bid Starts from ₹${widget.minBid.toStringAsFixed(
+                        0)}/- and Maximum Bid ₹${widget.maxBid.toStringAsFixed(
                         0)}/-",
                     style: TextStyle(
                       color: Color(0xff989898),

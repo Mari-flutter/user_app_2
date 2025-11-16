@@ -14,11 +14,16 @@ class DiditKYCWebviewScreen extends StatelessWidget {
 
   // 1. HELPER FUNCTION (VOID) - Handles Flutter Navigation
   void _handleKycCompletion(BuildContext context, String? status) {
-    if (!context.mounted) return;
+    print('DEBUG: _handleKycCompletion called with status: $status');
+    if (!context.mounted) {
+      print('DEBUG: Context not mounted, exiting _handleKycCompletion.');
+      return;
+    }
 
     final normalizedStatus = status?.toLowerCase() ?? '';
 
     if (normalizedStatus == 'approved' || normalizedStatus == 'completed') {
+      print('DEBUG: Status is $normalizedStatus. Navigating to setup_profile.');
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const setup_profile()),
@@ -33,9 +38,11 @@ class DiditKYCWebviewScreen extends StatelessWidget {
       if (normalizedStatus == 'declined') {
         message = 'KYC Declined. Please contact support.';
         color = Colors.red;
+        print('DEBUG: Status is Declined. Showing red SnackBar.');
       } else {
         message = 'KYC is currently In Review. We will notify you when approved.';
         color = Colors.orange;
+        print('DEBUG: Status is In Review/Other ($normalizedStatus). Showing orange SnackBar.');
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -54,6 +61,7 @@ class DiditKYCWebviewScreen extends StatelessWidget {
       InAppWebViewController controller, WebUri? url, BuildContext context) async {
 
     final urlString = url.toString();
+    print('DEBUG: WebView starting load for URL: $urlString');
     final uri = Uri.tryParse(urlString);
 
     // Ensure we are checking the correct callback endpoint (using the log's URL)
@@ -61,6 +69,7 @@ class DiditKYCWebviewScreen extends StatelessWidget {
 
       final kycStatus = uri?.queryParameters['status'];
       print('DIDIT CALLBACK INTERCEPTED. Status: $kycStatus');
+      print('DEBUG: Intercepted callback URL: $urlString');
 
       // Call the Flutter navigation handler
       _handleKycCompletion(context, kycStatus);
@@ -71,11 +80,15 @@ class DiditKYCWebviewScreen extends StatelessWidget {
     }
 
     // Allow all other normal page navigation
+    print('DEBUG: Allowing navigation to $urlString');
     return NavigationActionPolicy.ALLOW;
   }
 
   @override
   Widget build(BuildContext context) {
+    print('DEBUG: Building DiditKYCWebviewScreen.');
+    print('DEBUG: Initial KYC URL: $kycUrl, Profile ID: $profileID');
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('KYC Verification'),

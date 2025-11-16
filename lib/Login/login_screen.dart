@@ -2,7 +2,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:country_picker/country_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,6 +10,9 @@ import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:user_app/Bottom_Navbar/bottom_navigation_bar.dart';
+
+import '../Profile/setup_profile_after_login_without_kyc_screen.dart';
+import '../Services/secure_storage.dart';
 
 class RequestOtpModel {
   final String phoneNumber;
@@ -70,10 +73,12 @@ class _loginState extends State<login> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
 
+  bool isGoogleSigningIn = false;
   bool isOtpSent = false;
   bool isSending = false;
   int resendTimer = 0;
   Timer? timer;
+  String selectedCountryCode = "+91";
 
   // 🔑 NEW STATE: Tracks if the current sequence is for Registration or Login
   bool _isRegistering = false;
@@ -93,9 +98,9 @@ class _loginState extends State<login> {
 
   @override
   void sendOtp() async {
-    final phone = _phoneController.text.trim();
+    final phone = "$selectedCountryCode${_phoneController.text.trim()}";
 
-    if (phone.length != 10) {
+    if (_phoneController.text.trim().length != 10) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Please enter a valid 10-digit number"),
@@ -112,13 +117,14 @@ class _loginState extends State<login> {
 
     try {
       final requestBody = RequestOtpModel(phoneNumber: phone);
-
+      print(requestBody);
       // 1. 🔍 ATTEMPT LOGIN REQUEST FIRST
       var response = await http.post(
         Uri.parse(_loginRequestUrl),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(requestBody.toJson()),
       );
+      print(response.body);
 
       if (response.statusCode == 200) {
         // ✅ SUCCESS: User is Registered, proceed to Login Verification
@@ -188,7 +194,9 @@ class _loginState extends State<login> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("OTP sent successfully for $mode to +91 $phone"),
+        content: Text(
+          "OTP sent successfully for $mode to $selectedCountryCode $phone",
+        ),
         backgroundColor: const Color(0xff07C66A),
       ),
     );
@@ -213,7 +221,7 @@ class _loginState extends State<login> {
         ? _sentPhoneNumber
         : _phoneController.text.trim();
 
-    if (enteredOtp.isEmpty || phone.length != 10) {
+    if (enteredOtp.isEmpty || _phoneController.text.trim().length != 10) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Please send and enter a valid OTP"),
@@ -246,7 +254,6 @@ class _loginState extends State<login> {
         // Since the model verifies success by token presence in a 200 OK response,
         // we can safely proceed.
         if (verifyResponse.phoneVerified) {
-          // ✅ Save details securely
           await storage.write(
             key: 'profileId',
             value: verifyResponse.profileId,
@@ -257,9 +264,7 @@ class _loginState extends State<login> {
             value: verifyResponse.phoneNumber,
           );
           await storage.write(key: 'loginType', value: 'phone');
-
-          print('✅ Profile ID Saved: ${verifyResponse.profileId}');
-          print('✅ Token Saved: ${verifyResponse.token}');
+          await SecureStorageService.updateUserAndReferIdsFromApi();
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -268,11 +273,21 @@ class _loginState extends State<login> {
             ),
           );
 
-          // ✅ Navigate to Home
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const HomeLayout()),
-          );
+          if (_isRegistering) {
+            // New user → go setup screen
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => setup_profile_after_login_without_kyc_screen(),
+              ),
+            );
+          } else {
+            // Existing user → go home
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => HomeLayout()),
+            );
+          }
         } else {
           // This case should ideally not be hit with the current API response logic,
           // but included as a safeguard.
@@ -314,6 +329,44 @@ class _loginState extends State<login> {
     }
   }
 
+  Future<bool> isNewUser(String profileId, String token) async {
+    final url = Uri.parse(
+      "https://foxlchits.com/api/Profile/profile/$profileId",
+    );
+
+    final response = await http.get(
+      url,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      final String name = data["name"] ?? "";
+      final String gender = data["gender"] ?? "";
+      final String dob = data["dateofBirth"] ?? "";
+      final String address = data["address"] ?? "";
+      final String email = data["email"] ?? ""; // ✔ added
+
+      // If any essential field is missing → user is NEW
+      if (name.isEmpty ||
+          gender.isEmpty ||
+          dob.isEmpty ||
+          address.isEmpty ||
+          email.isEmpty) {
+        // ✔ added
+        return true; // NEW USER
+      } else {
+        return false; // EXISTING USER
+      }
+    }
+
+    return true; // default assume new user if unable to fetch profile
+  }
+
   @override
   void dispose() {
     timer?.cancel();
@@ -322,39 +375,93 @@ class _loginState extends State<login> {
     super.dispose();
   }
 
-  Future<String?> signInWithGoogle() async {
-    final GoogleSignIn googleSignIn = GoogleSignIn(
-      scopes: ['email'],
-      clientId: "634781175675-9sr37dl784o2r8dckmd2ie9hnrsvm5e4.apps.googleusercontent.com",
-    );
+  Future<void> signInWithGoogle() async {
+    try {
+      setState(() {
+        isGoogleSigningIn = true;
+      });
 
-    // Step 1: user chooses Google account
-    final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        scopes: ['email'],
+        clientId:
+            "634781175675-9sr37dl784o2r8dckmd2ie9hnrsvm5e4.apps.googleusercontent.com",
+      );
 
-    if (googleUser == null) {
-      print("User cancelled login");
-      return null;
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+      if (googleUser == null) {
+        setState(() => isGoogleSigningIn = false);
+        print("User cancelled login");
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final String? idToken = googleAuth.idToken;
+
+      developer.log("GOOGLE TOKEN: $idToken");
+
+      // 🔥 Step 2 — Send token to your backend
+      final url = Uri.parse("https://foxlchits.com/api/Account/google-login");
+
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"idToken": idToken}),
+      );
+      print("🌐 GOOGLE LOGIN API RESPONSE => ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        // Extract token correctly
+        final String jwtToken = data["token"]["result"] ?? "";
+        final String profileId = data["profile"]["id"];
+
+        await storage.write(key: "profileId", value: profileId);
+        await storage.write(key: "token", value: jwtToken);
+        await storage.write(key: "loginType", value: "google");
+
+        await SecureStorageService.updateUserAndReferIdsFromApi();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Google Login Successful!"),
+            backgroundColor: const Color(0xff07C66A),
+          ),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const setup_profile_after_login_without_kyc_screen(),
+          ),
+        );
+      }
+      else {
+        String msg = "Google login failed";
+
+        try {
+          msg = jsonDecode(response.body)["message"] ?? msg;
+        } catch (_) {}
+        print(msg);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.redAccent),
+        );
+      }
+    } catch (e) {
+      print("error:$e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Google sign-in error: $e"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      setState(() => isGoogleSigningIn = false);
     }
-
-    // Step 2: get tokens
-    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-    // Step 3: login into Firebase
-    final credential = GoogleAuthProvider.credential(
-      idToken: googleAuth.idToken,
-      accessToken: googleAuth.accessToken,
-    );
-
-    await FirebaseAuth.instance.signInWithCredential(credential);
-
-    // Step 4: send this to backend
-    print("TOKEN: ${googleAuth.idToken}");
-    developer.log("TOKEN: ${googleAuth.idToken}");
-
-    return googleAuth.idToken;
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -388,66 +495,112 @@ class _loginState extends State<login> {
                   ),
                 ),
                 SizedBox(height: size.height * 0.01),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.number,
-                    maxLength: 10,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: InputDecoration(
-                      suffixIcon: GestureDetector(
-                        onTap: (isSending || resendTimer > 0)
-                            ? null
-                            : sendOtp, // Disable tap while sending or waiting
-                        child: Padding(
-                          padding: EdgeInsets.only(
-                            top: size.height * 0.015,
-                            right: size.width * 0.03,
-                          ),
-                          child: Text(
-                            isSending
-                                ? "Sending..."
-                                : resendTimer > 0
-                                ? "Resend (${resendTimer}s)"
-                                : isOtpSent
-                                ? "Resend"
-                                : "Send OTP",
-                            style: GoogleFonts.urbanist(
-                              fontWeight: FontWeight.w600,
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        showCountryPicker(
+                          context: context,
+                          showPhoneCode: true,
+
+                          countryListTheme: CountryListThemeData(
+                            // 🔻 Background of the drawer
+                            backgroundColor: Colors.black,
+
+                            // 🔻 Text color inside picker
+                            textStyle: const TextStyle(
+                              color: Colors.white,
                               fontSize: 14,
-                              color: (isSending || resendTimer > 0)
-                                  ? Colors.grey
-                                  : const Color(0xff201F1F),
+                              fontWeight: FontWeight.w500,
                             ),
+
+                            // 🔻 Height (reduced drawer size)
+                            bottomSheetHeight: MediaQuery.of(context).size.height * 0.50,
+
+                            // 🔻 Rounded top corners
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(24),
+                            ),
+                            // 🔻 Reduce padding and row height
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            margin: const EdgeInsets.only(top: 10),
+                            flagSize: 22, // Smaller flags
+                          ),
+
+                          onSelect: (Country country) {
+                            setState(() {
+                              selectedCountryCode = "+${country.phoneCode}";
+                            });
+                          },
+                        );
+
+                      },
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
+                        margin: EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: Color(0xffCFCFCF),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.black26, width: 0.8),
+                        ),
+                        child: Text(
+                          selectedCountryCode,
+                          style: GoogleFonts.urbanist(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
                           ),
                         ),
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xffCFCFCF),
-                      counterText: "",
-                      hintText: "Enter number",
-                      hintStyle: GoogleFonts.urbanist(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 16,
-                        color: const Color(0xFF7E7E7E),
-                      ),
                     ),
-                    cursorColor: Colors.black,
-                    style: GoogleFonts.urbanist(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 16,
-                      color: const Color(0xff7E7E7E),
-                    ),
-                  ),
-                ),
 
+                    Expanded(
+                      child: TextField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.number,
+                        maxLength: 10,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        decoration: InputDecoration(
+                          suffixIcon: GestureDetector(
+                            onTap: (isSending || resendTimer > 0)
+                                ? null
+                                : sendOtp,
+                            child: Container(
+                              padding: EdgeInsets.only(top: 15, right: 10),
+                              child: Text(
+                                isSending
+                                    ? "Sending..."
+                                    : resendTimer > 0
+                                    ? "Resend (${resendTimer}s)"
+                                    : isOtpSent
+                                    ? "Resend"
+                                    : "Send OTP",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: (isSending || resendTimer > 0)
+                                      ? Colors.grey
+                                      : Colors.black,
+                                ),
+                              ),
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: Color(0xffCFCFCF),
+                          counterText: "",
+                          hintText: "Enter number",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 SizedBox(height: size.height * 0.02),
                 // 🔹 Enter OTP
                 Text(
@@ -521,9 +674,7 @@ class _loginState extends State<login> {
 
                 // 🔹 Continue with Google Button
                 GestureDetector(
-                  onTap: () {
-                    signInWithGoogle();
-                  },
+                  onTap: isGoogleSigningIn ? null : () => signInWithGoogle(),
                   child: Container(
                     width: double.infinity,
                     height: 51,
@@ -532,29 +683,48 @@ class _loginState extends State<login> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Center(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Google Icon
-                          Image.asset(
-                            "assets/images/Login/google.png",
-                            width: 18,
-                            height: 18,
-                            fit: BoxFit.contain,
-                          ),
-                          SizedBox(width: size.width * 0.02),
-                          Text(
-                            "Continue with Google",
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.urbanist(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 16,
-                              color: Colors.black,
-                              height: 1.0,
+                      child: isGoogleSigningIn
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                                SizedBox(width: 10),
+                                Text(
+                                  "Signing in...",
+                                  style: GoogleFonts.urbanist(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 16,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Image.asset(
+                                  "assets/images/Login/google.png",
+                                  width: 18,
+                                  height: 18,
+                                ),
+                                SizedBox(width: 10),
+                                Text(
+                                  "Continue with Google",
+                                  style: GoogleFonts.urbanist(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 16,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                 ),

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:user_app/Models/Investments/Gold/CurrentGoldValue_Model.dart';
 import 'package:user_app/Helper/Local_storage_manager.dart';
+import 'package:user_app/Services/secure_storage.dart';
 
 // In user_app/Services/Gold_price.dart (formerly GoldService)
 
@@ -12,8 +13,12 @@ class GoldService {
 
   // ✅ Fetch from API and cache in Hive
   static Future<CurrentGoldValue?> fetchAndCacheGoldValue() async {
+    final Token = await SecureStorageService.getToken();
     print('🔹 Fetching gold price...');
-    final response = await http.get(Uri.parse(_apiUrl));
+    final response = await http.get(Uri.parse(_apiUrl), headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer $Token",
+    },);
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
 

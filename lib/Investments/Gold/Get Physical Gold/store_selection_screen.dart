@@ -4,13 +4,16 @@ import 'package:http/http.dart' as http; // <-- Import HTTP package
 import 'dart:convert'; // <-- Import dart:convert for JSON decoding
 
 import '../../../Helper/Local_storage_manager.dart';
+import '../../../Models/Investments/Gold/CurrentGoldValue_Model.dart';
 import '../../../Models/Investments/Gold/store_model.dart';
+import '../../../Services/secure_storage.dart';
 import 'confirm_your_booking_screen.dart';
 
 class store_selection extends StatefulWidget {
   final double selectedGrams;
   final EstimateValue;
-  const store_selection({super.key, required this.selectedGrams, required this.EstimateValue});
+  final CurrentGoldValue? goldvalue;
+  const store_selection({super.key, required this.selectedGrams, required this.EstimateValue,required this.goldvalue});
 
   @override
   State<store_selection> createState() => _store_selectionState();
@@ -52,7 +55,11 @@ class _store_selectionState extends State<store_selection> {
   // 1. API Fetching Logic (Inline)
   // =======================================================
   Future<List<StoreSelectionModel>> _fetchSchemeMembers() async {
-    final response = await http.get(Uri.parse(_apiUrl));
+    final Token = await SecureStorageService.getToken();
+    final response = await http.get(Uri.parse(_apiUrl),headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer $Token",
+    },);
 
     if (response.statusCode == 200) {
       final List<dynamic> jsonList = jsonDecode(response.body);
@@ -451,7 +458,7 @@ class _store_selectionState extends State<store_selection> {
                                           selectedStore: store, // Pass the selected model
                                           selectedGrams: widget.selectedGrams,
                                           EstimatedValue:widget.EstimateValue,
-                                          Storecontact:store.phoneNumber,
+                                          Storecontact:store.phoneNumber, goldvalue:widget.goldvalue
                                         ),
                                       ),
                                     );

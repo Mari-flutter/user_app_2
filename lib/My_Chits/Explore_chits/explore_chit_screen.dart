@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
+import 'package:user_app/Live_Auction/Attach_files/attach_file_screen.dart';
 import 'package:user_app/My_Chits/Explore_chits/auction_result_screen.dart';
 import 'package:user_app/My_Chits/Explore_chits/chit_monthly_pay_due_screen.dart';
 import 'package:user_app/My_Chits/Explore_chits/chit_scheme_screen.dart';
@@ -28,6 +29,7 @@ class explore_chit extends StatefulWidget {
   final double otherCharges;
   final double penalty;
   final double taxes;
+  final double formancommission;
   final String chitName;
   final String chitType;
   final int TotalMembers;
@@ -45,6 +47,7 @@ class explore_chit extends StatefulWidget {
     required this.otherCharges,
     required this.penalty,
     required this.taxes,
+    required this.formancommission,
     required this.chitName,
     required this.chitType,
     required this.TotalMembers,
@@ -82,15 +85,15 @@ class _explore_chitState extends State<explore_chit> {
     return _formatDateDisplay(endDate);
   }
   String get _nextAuctionDate {
-    final nextIndex = exploreChitList.length; // Index of the *next* installment/auction
+    final nextIndex = exploreChitList.length;
 
     if (nextIndex >= 0 && nextIndex < widget.auctionSchedules.length) {
       final nextSchedule = widget.auctionSchedules[nextIndex];
-      // Assuming AuctionSchedule model has a DateTime field named 'auctionDate'
-      return _formatDateDisplay(nextSchedule.auctionDate);
+
+      // 👈 return FULL ISO STRING so time is included
+      return nextSchedule.auctionDate.toIso8601String();
     }
 
-    // Fallback if all auctions are completed or schedule list is empty
     return 'N/A';
   }
   final List<String> chit_scheme_to_TC_tags = [
@@ -126,6 +129,7 @@ class _explore_chitState extends State<explore_chit> {
       Taxes: widget.taxes,
       Value: widget.chitValue,
       Contribution: widget.totalContribution,
+      Formancommission:widget.formancommission,
     ),
     auction_result(
       chitId: widget.chitId,
@@ -173,13 +177,16 @@ class _explore_chitState extends State<explore_chit> {
       });
       print('📦 Loaded ${cachedList.length} explore chit records from cache');
     }
-
+    final Token = await SecureStorageService.getToken();
     // 🔹 2. Fetch latest data from API in background
     try {
       final url = Uri.parse(
           'https://foxlchits.com/api/ChitPayment/payment-history/${widget.chitId}/$userId');
       print('🌍 Fetching explore chit data: $url');
-      final response = await http.get(url);
+      final response = await http.get(url,headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -298,6 +305,36 @@ class _explore_chitState extends State<explore_chit> {
                         ),
                       ),
                     ),
+                    Spacer(),
+                    Align(
+                      alignment: AlignmentGeometry.centerRight,
+                      child:GestureDetector(
+                        onTap: (){
+                          Navigator.push(context, MaterialPageRoute(builder: (context)=>attach_file()));
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Color(0xff3F60A9),
+                            borderRadius: BorderRadius.circular(11)
+                          ),
+                          child: Padding(
+                            padding:  EdgeInsets.symmetric(horizontal: 4,vertical: 4),
+                            child: Center(
+                              child: Text(
+                                'Add Documents',
+                                style: GoogleFonts.urbanist(
+                                  textStyle: const TextStyle(
+                                    color: Color(0xffFFFFFF),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    )
                   ],
                 ),
                 SizedBox(height: size.height * 0.04),
@@ -527,7 +564,7 @@ class _explore_chitState extends State<explore_chit> {
                               GestureDetector(
                                 onTap: ()  {
                                  Navigator.push(context,MaterialPageRoute(builder: (context)=>chit_monthly_pay_due(
-                                   paymentHistory: exploreChitList,
+                                   paymentHistory: exploreChitList, chitID: widget.chitId,
                                  )));
                                 },
                                 child: Container(

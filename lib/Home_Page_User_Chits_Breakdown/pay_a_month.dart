@@ -25,7 +25,7 @@ class _PayMonthPageState extends State<PayMonthPage> {
 
   Future<void> fetchAllChits() async {
     try {
-      final payments = await PendingPaymentService.fetchAllChitPayments();
+      final payments = await PendingPaymentService.fetchAllChitPayments(context);
 
       // ✅ Calculate total pending across all chits
       final total = payments.fold<double>(

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:shimmer/shimmer.dart';
+import 'package:user_app/Services/secure_storage.dart';
 
 import '../Models/Investments/Realestate/real_estate_transaction_model.dart';
 
@@ -27,12 +28,17 @@ class _transactions_history_for_real_estatementState
   }
 
   Future<void> fetchTransactions() async {
+    final Token = await SecureStorageService.getToken();
+    final ProfileId = await SecureStorageService.getProfileId();
     final url = Uri.parse(
-      "https://foxlchits.com/api/PaymentHistory/by-profile-REInvestment/f864ab0d-dfd0-4c28-901e-df65cbfe9a1b",
+      "https://foxlchits.com/api/PaymentHistory/by-profile-REInvestment/$ProfileId",
     );
 
     try {
-      final response = await http.get(url);
+      final response = await http.get(url,headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
 
       if (response.statusCode == 200) {
         final List data = jsonDecode(response.body);

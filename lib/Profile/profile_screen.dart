@@ -4,8 +4,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hive/hive.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:user_app/Login/login_screen.dart';
 import 'package:user_app/Profile/kyc_verified.dart';
 import 'package:http/http.dart' as http;
 
@@ -67,8 +69,13 @@ class _profileState extends State<profile> {
 
   //get data
   Future<Profile> getProfileData() async {
+    final Token = await SecureStorageService.getToken();
     final response = await http.get(
       Uri.parse("https://foxlchits.com/api/Profile/profile/${profileId}"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },
     );
     print(profileId);
 
@@ -83,11 +90,15 @@ class _profileState extends State<profile> {
 
   //put data
   Future<void> updateProfile(ProfileUpdate profile) async {
+    final Token = await SecureStorageService.getToken();
     final url = Uri.parse("https://foxlchits.com/api/Profile/${profileId}");
 
     final response = await http.put(
       url,
-      headers: {"Content-Type": "application/json"},
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },
       body: jsonEncode(profile.toJson()),
     );
 
@@ -171,11 +182,14 @@ class _profileState extends State<profile> {
         setState(() => _isLoading = false);
         return;
       }
-
+      final Token = await SecureStorageService.getToken();
       final url = Uri.parse(
         "https://foxlchits.com/api/Auctionwinner/my-documents/$profileId",
       );
-      final response = await http.get(url);
+      final response = await http.get(url,headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
 
       if (response.statusCode == 200) {
         final List data = jsonDecode(response.body);
@@ -195,11 +209,15 @@ class _profileState extends State<profile> {
 
   Future<void> _viewFile(MyDocument doc) async {
     if (doc.documentPath != null && doc.documentPath!.isNotEmpty) {
+      final Token = await SecureStorageService.getToken();
       try {
         final url = "https://foxlchits.com${doc.documentPath}";
         final uri = Uri.parse(url);
 
-        final response = await http.get(uri);
+        final response = await http.get(uri,headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $Token",
+        },);
         if (response.statusCode == 200) {
           final dir = await getTemporaryDirectory();
 
@@ -242,6 +260,36 @@ class _profileState extends State<profile> {
     return isVerified
         ? const Icon(Icons.check_circle, color: Colors.greenAccent, size: 16)
         : const SizedBox();
+  }
+  Future<void> _logout() async {
+    // Show loader
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Color(0xff2563EB)),
+      ),
+    );
+
+    try {
+      // 1️⃣ Clear secure storage (token, profileId, userId, name, etc.)
+      await SecureStorageService.clearSession();
+
+      // 2️⃣ Clear Hive cached data
+      await LocalStorageManager.clearAll();
+      print("🔄 All local data cleared successfully!");
+
+      // 3️⃣ Navigate to login screen (remove all previous routes)
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const login()),
+              (route) => false, // Remove everything
+        );
+      }
+    } catch (e) {
+      print("❌ Logout error: $e");
+      if (mounted) Navigator.pop(context); // Close loader
+    }
   }
 
   @override
@@ -555,9 +603,7 @@ class _profileState extends State<profile> {
                                         doc.documentPath != null &&
                                         doc.documentPath!.isNotEmpty;
                                     final bool isVerified =
-                                        doc.verifiedAt != null &&
-                                        doc.verifiedAt!.isNotEmpty;
-
+                                    doc.approvals.any((a) => a.isApproved == true);
                                     return Container(
                                       decoration: BoxDecoration(
                                         border: Border.all(
@@ -641,6 +687,32 @@ class _profileState extends State<profile> {
                                     );
                                   },
                                 ),
+                                SizedBox(height: size.height * 0.02),
+                                Align(
+                                  alignment: AlignmentGeometry.bottomRight,
+                                  child: GestureDetector(
+                                    onTap: _logout,
+                                    child: Container(
+                                      width: 122,
+                                      decoration: BoxDecoration(
+                                        color: Color(0xff4770CB),
+                                            borderRadius: BorderRadius.circular(11)
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(5),
+                                        child: Center(
+                                          child:SupportText(
+                                            text: 'Log Out',
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.white,
+                                            fontType: FontType.urbanist,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                )
                               ],
                             ),
                           ),

@@ -1,10 +1,11 @@
 import 'dart:convert';
-import 'dart:ffi';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:user_app/Bottom_Navbar/bottom_navigation_bar.dart';
+import 'package:user_app/Services/secure_storage.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../Models/Notification/notification_model.dart';
 
@@ -15,10 +16,15 @@ class notification extends StatefulWidget {
   State<notification> createState() => _notificationState();
 }
 Future<List<UserNotification>> fetchNotifications() async {
+  final Token = await SecureStorageService.getToken();
+  final ProfileId = await SecureStorageService.getProfileId();
   final url = Uri.parse(
-      "https://foxlchits.com/api/Notification/user/53bc7dc5-ab2e-48c2-85a0-30ca661fe19d");
+      "https://foxlchits.com/api/Notification/user/$ProfileId");
 
-  final response = await http.get(url);
+  final response = await http.get(url,headers: {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer $Token",
+  },);
 
   if (response.statusCode == 200) {
     final List data = jsonDecode(response.body);
@@ -105,12 +111,12 @@ class _notificationState extends State<notification> {
                   future: fetchNotifications(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Center(child: CircularProgressIndicator());
+                      return shimmerNotification(size);
                     }
 
                     if (snapshot.hasError) {
                       return Center(
-                        child: Text("Error loading notifications",
+                        child: Text("Notifications",
                             style: TextStyle(color: Colors.white)),
                       );
                     }
@@ -170,4 +176,26 @@ class _notificationState extends State<notification> {
       ),
     );
   }
+  Widget shimmerNotification(Size size) {
+    return ListView.builder(
+      itemCount: 6,
+      itemBuilder: (context, index) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Shimmer.fromColors(
+            baseColor: Colors.grey.shade800,
+            highlightColor: Colors.grey.shade600,
+            child: Container(
+              height: 90,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade900,
+                borderRadius: BorderRadius.circular(11),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
 }

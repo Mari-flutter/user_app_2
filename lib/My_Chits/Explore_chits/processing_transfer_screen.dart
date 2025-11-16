@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:user_app/Bottom_Navbar/bottom_navigation_bar.dart';
 import 'package:user_app/My_Chits/Explore_chits/withdraw_for_chits_screen.dart';
 
 class processing_transfer extends StatefulWidget {
@@ -29,7 +30,7 @@ class _processing_transferState extends State<processing_transfer> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => withdraw_for_chits()),
+                          MaterialPageRoute(builder: (context) => HomeLayout(initialTab: 0,)),
                         );
                       },
                       child: Image.asset(

@@ -119,9 +119,14 @@ class _gold_schemeState extends State<gold_scheme> {
   }
 
   Future<void> fetchGoldSchemesInBackground() async {
+    final Token = await SecureStorageService.getToken();
     try {
       final response = await http.get(
         Uri.parse('https://foxlchits.com/api/GoldScheme'),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $Token",
+        },
       );
 
       if (response.statusCode == 200) {
@@ -150,6 +155,7 @@ class _gold_schemeState extends State<gold_scheme> {
 
   // --- FINAL CONFIRMATION LOGIC (Unchanged for this step) ---
   Future<void> _confirmSubscription(String? paymentId, String? orderId) async {
+    final Token = await SecureStorageService.getToken();
     final profileId = await SecureStorageService.getProfileId();
 
     final schemeId = subscribingSchemeIds.isNotEmpty ? subscribingSchemeIds.first : null;
@@ -170,7 +176,10 @@ class _gold_schemeState extends State<gold_scheme> {
 
       final response = await http.post(
         Uri.parse(_confirmPaymentApiUrl),
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $Token",
+        },
         body: jsonEncode(requestBody),
       );
 
@@ -205,6 +214,7 @@ class _gold_schemeState extends State<gold_scheme> {
   // --- MAIN PAYMENT INITIATION LOGIC (REVISED FOR DEBUGGING) ---
   Future<void> subscribeToScheme(String schemeId) async {
     final profileId = await SecureStorageService.getProfileId();
+    final Token = await SecureStorageService.getToken();
     final scheme = goldSchemes.firstWhere((s) => s.id == schemeId);
 
     if (profileId == null || profileId.isEmpty) {
@@ -228,7 +238,10 @@ class _gold_schemeState extends State<gold_scheme> {
 
       final checkResponse = await http.post(
         Uri.parse(_checkMemberApiUrl),
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $Token",
+        },
         body: jsonEncode(checkBody),
       );
 
@@ -269,7 +282,10 @@ class _gold_schemeState extends State<gold_scheme> {
 
       final orderResponse = await http.post(
         Uri.parse(_orderApiUrl),
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $Token",
+        },
         body: jsonEncode(orderBody),
       );
 
@@ -464,7 +480,7 @@ class _gold_schemeState extends State<gold_scheme> {
                                     ),
                                   ),
                                   Text(
-                                    '₹${scheme.estimateValue.toStringAsFixed(0)}',
+                                    '${scheme.estimateValue.toStringAsFixed(0)}g',
                                     style: GoogleFonts.urbanist(
                                       textStyle: const TextStyle(
                                         color: Color(0xffF8C545),

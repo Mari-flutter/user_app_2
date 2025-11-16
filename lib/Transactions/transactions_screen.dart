@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:user_app/Transactions/transaction_history_for_all_withdraw.dart';
 import 'package:user_app/Transactions/transactions_history_for_chits.dart';
 import 'package:user_app/Transactions/transactions_history_for_gold.dart';
 import 'package:user_app/Transactions/transactions_history_for_gold_scheme.dart';
 import 'package:user_app/Transactions/transactions_history_for_realestatement.dart';
 
-import 'contribution_screen.dart';
+
 
 class transactions extends StatefulWidget {
   final Function(int)? onTabChange;
@@ -33,14 +34,15 @@ class _transactionsState extends State<transactions> {
     widget.onTabChange?.call(index);
   }
 
-  final List<String> chitTypeTags = ["Chits", "Gold","Gold Scheme","Real Estate"];
+  final List<String> chitTypeTags = ["Chits", "Gold","Gold Scheme","Real Estate","Withdraw"];
 
   // 🔹 Widget list for each tab
   late final List<Widget> pages = [
      transactions_history_for_chits(),
     transactions_history_for_gold(),
     transactions_history_for_gold_scheme(),
-    transactions_history_for_real_estatement()
+    transactions_history_for_real_estatement(),
+    transactions_history_for_all_withdraw()
   ];
 
   @override

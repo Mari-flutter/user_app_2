@@ -6,23 +6,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:user_app/Bottom_Navbar/bottom_navigation_bar.dart';
+
 
 import '../Models/Profile/set_up_profile.dart';
 import '../Services/secure_storage.dart';
-import 'Didit_web.dart';
+
 import 'animation_screen.dart';
 
 
-class setup_profile extends StatefulWidget {
+class setup_profile_after_login_without_kyc_screen extends StatefulWidget {
   final VoidCallback? onKycCompleted; // 👈 add this line
 
-  const setup_profile({super.key, this.onKycCompleted});
+  const setup_profile_after_login_without_kyc_screen({super.key, this.onKycCompleted});
 
   @override
-  State<setup_profile> createState() => _setup_profileState();
+  State<setup_profile_after_login_without_kyc_screen> createState() => _setup_profile_after_login_without_kyc_screenState();
 }
 
-class _setup_profileState extends State<setup_profile> {
+class _setup_profile_after_login_without_kyc_screenState extends State<setup_profile_after_login_without_kyc_screen> {
   String selectedCountryCode = "+91";
   bool isExpanded = false;
   Image? selected_Image;
@@ -55,13 +57,16 @@ class _setup_profileState extends State<setup_profile> {
   bool isVerifyingPhoneOtp = false;
   bool isVerifyingEmailOtp = false;
 
+
   @override
   void initState() {
     super.initState();
     _getToken();
     _loadProfileId(); // call this first
   }
+
 // ---------------- PHONE OTP ------------------
+
   Future<void> requestPhoneOtp() async {
     if (mobileController.text.isEmpty) return;
 
@@ -71,10 +76,8 @@ class _setup_profileState extends State<setup_profile> {
       "https://foxlchits.com/api/Profile/$profileId/request-phone-otp",
     );
 
-    final body = {
-      "phoneNumber": "$selectedCountryCode${mobileController.text.trim()}",
+    final body = {"phoneNumber": "$selectedCountryCode${mobileController.text.trim()}",
     };
-
 
     final response = await http.post(url,
         headers: {
@@ -107,6 +110,7 @@ class _setup_profileState extends State<setup_profile> {
     }
   }
 
+
   Future<void> verifyPhoneOtp() async {
     setState(() => isVerifyingPhoneOtp = true);
     final Token = await SecureStorageService.getToken();
@@ -118,6 +122,12 @@ class _setup_profileState extends State<setup_profile> {
       "phoneNumber": "$selectedCountryCode${mobileController.text.trim()}",
       "otp": phoneOtpController.text.trim()
     };
+    final raw = mobileController.text.trim();
+    if (raw.length != 10) {
+      _showMessage("Enter valid 10 digit mobile number");
+      setState(() => isSendingPhoneOtp = false);
+      return;
+    }
 
     final response = await http.post(url,
         headers: {
@@ -136,6 +146,7 @@ class _setup_profileState extends State<setup_profile> {
       _showMessage("Invalid Phone OTP");
     }
   }
+
   // ---------------- EMAIL OTP ------------------
   Future<void> requestEmailOtp() async {
     if (emailController.text.isEmpty) return;
@@ -177,6 +188,8 @@ class _setup_profileState extends State<setup_profile> {
     setState(() {});
   }
 
+
+
   Future<void> verifyEmailOtp() async {
     setState(() => isVerifyingEmailOtp = true);
     final Token = await SecureStorageService.getToken();
@@ -206,6 +219,7 @@ class _setup_profileState extends State<setup_profile> {
       _showMessage("Invalid Email OTP");
     }
   }
+
 
   void _showMessage(String msg) {
     ScaffoldMessenger.of(context)
@@ -243,7 +257,6 @@ class _setup_profileState extends State<setup_profile> {
 
   Future<void> loadProfile() async {
     final Token = await SecureStorageService.getToken();
-
     final response = await http.get(
       Uri.parse("https://foxlchits.com/api/Profile/profile/$profileId"),
       headers: {
@@ -254,67 +267,65 @@ class _setup_profileState extends State<setup_profile> {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
+      final phone = data['phoneNumber'] ?? '';
 
-      // ---------------------------------
-      // 📌 PHONE NUMBER PROCESSING
-      // ---------------------------------
-      String phone = data["phoneNumber"] ?? "";
-
-      if (phone.startsWith("+")) {
-        final digits = phone.replaceAll(RegExp(r'[^0-9]'), "");
-
-        if (digits.length > 10) {
-          selectedCountryCode = "+${digits.substring(0, digits.length - 10)}";
-          mobileController.text = digits.substring(digits.length - 10);
-        } else {
-          // Fallback
-          selectedCountryCode = "+91";
-          mobileController.text = "";
-        }
-      } else {
-        // Old users might have saved only 10 digit number
-        selectedCountryCode = "+91";
-        mobileController.text = phone;
-      }
-
-      // ---------------------------------
-      // 📌 LOAD REMAINING FIELDS
-      // ---------------------------------
       setState(() {
-        nameController.text = data["name"] ?? "";
-        emailController.text = data["email"] ?? "";
-        addressController.text = data["address"] ?? "";
+        // NAME
+        nameController.text = data['name'] ?? '';
 
-        signupType = data["signupType"] ?? "";
+        // EMAIL
+        emailController.text = data['email'] ?? '';
 
-        selectedValue = data["gender"] ?? "";
+        // ----------------------------
+        //   PHONE + COUNTRY CODE FIX
+        // ----------------------------
+        if (phone.startsWith('+')) {
+          final digitsOnly = phone.replaceAll(RegExp('[^0-9]'), '');
 
-        phoneOtpVerified = data["phoneVerified"] ?? false;
-        emailOtpVerified = data["emailVerified"] ?? false;
+          if (digitsOnly.length >= 11) {
+            // Country code = everything except last 10 digits
+            selectedCountryCode =
+            "+${digitsOnly.substring(0, digitsOnly.length - 10)}";
 
-        // DOB
-        if (data["dateofBirth"] != null &&
-            data["dateofBirth"].toString().isNotEmpty) {
-          _selectedDate = DateTime.parse(data["dateofBirth"]);
+            // Mobile number = last 10 digits
+            mobileController.text =
+                digitsOnly.substring(digitsOnly.length - 10);
+          } else {
+            // Invalid backend format → fallback
+            selectedCountryCode = "+91";
+            mobileController.text = "";
+          }
+        } else {
+          // No +code from backend → fallback
+          selectedCountryCode = "+91";
+          mobileController.text = phone;
+        }
+
+        // ADDRESS
+        addressController.text = data['address'] ?? '';
+
+        // SIGNUP TYPE (Google / Phone)
+        signupType = data['signupType'] ?? "";
+
+        // GENDER
+        selectedValue = data['gender'] ?? '';
+
+        // VERIFIED STATUS
+        phoneOtpVerified = data['phoneVerified'] ?? false;
+        emailOtpVerified = data['emailVerified'] ?? false;
+
+        // DATE OF BIRTH
+        if (data['dateofBirth'] != null && data['dateofBirth'].toString().isNotEmpty) {
+          _selectedDate = DateTime.parse(data['dateofBirth']);
         }
       });
-
-    } else {
-      print("❌ Failed to load profile: ${response.body}");
     }
   }
+
 
   Future<void> updateProfile(SetupProfile profile) async {
     final Token = await SecureStorageService.getToken();
     final url = Uri.parse("https://foxlchits.com/api/Profile/$profileId");
-
-    // Always include country code
-    String formattedPhone =
-        "$selectedCountryCode${mobileController.text.trim()}";
-
-    // Build updated body
-    final updatedBody = profile.toJson();
-    updatedBody["phoneNumber"] = formattedPhone;
 
     final response = await http.put(
       url,
@@ -322,7 +333,7 @@ class _setup_profileState extends State<setup_profile> {
         "Content-Type": "application/json",
         "Authorization": "Bearer $Token",
       },
-      body: jsonEncode(updatedBody),
+      body: jsonEncode(profile.toJson()),
     );
 
     if (response.statusCode == 200) {
@@ -332,10 +343,9 @@ class _setup_profileState extends State<setup_profile> {
       );
     } else {
       print("❌ Failed to update profile: ${response.statusCode}");
-      print("Response: ${response.body}");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to update profile")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Failed to update profile")));
     }
   }
 
@@ -423,6 +433,9 @@ class _setup_profileState extends State<setup_profile> {
     }
   }
 
+
+
+
   @override
   void dispose() {
     nameController.dispose();
@@ -433,6 +446,7 @@ class _setup_profileState extends State<setup_profile> {
     emailOtpController.dispose();
     super.dispose();
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -515,31 +529,32 @@ class _setup_profileState extends State<setup_profile> {
                               child: Row(
                                 children: [
                                   SizedBox(width: size.width * 0.06),
-                                  GestureDetector(
-                                    onTap: (signupType == "Google" && !phoneOtpVerified)
-                                        ? () {
-                                      showCountryPicker(
-                                        context: context,
-                                        showPhoneCode: true,
-                                        onSelect: (Country country) {
-                                          setState(() => selectedCountryCode = "+${country.phoneCode}");
-                                        },
-                                      );
-                                    }
-                                        : null,
-                                    child: Opacity(
-                                      opacity: (signupType == "Google" && !phoneOtpVerified) ? 1.0 : 0.5,
+                                  Opacity(
+                                    opacity: signupType == "Google" && !phoneOtpVerified ? 1.0 : 0.5,
+                                    child: GestureDetector(
+                                      onTap: signupType == "Google" && !phoneOtpVerified
+                                          ? () {
+                                        showCountryPicker(
+                                          context: context,
+                                          showPhoneCode: true,
+                                          onSelect: (Country country) {
+                                            setState(() {
+                                              selectedCountryCode = "+${country.phoneCode}";
+                                            });
+                                          },
+                                        );
+                                      }
+                                          : null,
                                       child: Text(
                                         selectedCountryCode,
                                         style: GoogleFonts.urbanist(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
                                           color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
                                         ),
                                       ),
                                     ),
                                   ),
-
                                   SizedBox(width: size.width * 0.06),
                                   Container(
                                     height: size.height * 0.05,
@@ -1095,95 +1110,6 @@ class _setup_profileState extends State<setup_profile> {
     );
   }
 
-  Widget mobileWithCountryPicker() {
-    Size size = MediaQuery.of(context).size;
-
-    final bool canEditPhone =
-    (signupType == "Google" && !phoneOtpVerified); // Only Google users edit
-
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Color(0xff323232)),
-        borderRadius: BorderRadius.circular(11),
-      ),
-      child: Row(
-        children: [
-          SizedBox(width: size.width * 0.06),
-
-          // Country Code Picker (Google Only)
-          GestureDetector(
-            onTap: canEditPhone
-                ? () {
-              showCountryPicker(
-                context: context,
-                showPhoneCode: true,
-                onSelect: (Country country) {
-                  setState(() {
-                    selectedCountryCode = "+${country.phoneCode}";
-                  });
-                },
-              );
-            }
-                : null,
-            child: Opacity(
-              opacity: canEditPhone ? 1 : 0.5,
-              child: Text(
-                selectedCountryCode,
-                style: GoogleFonts.urbanist(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ),
-
-          SizedBox(width: size.width * 0.06),
-          Container(
-            height: size.height * 0.05,
-            width: 1,
-            color: Color(0xffADADAD),
-          ),
-          SizedBox(width: size.width * 0.06),
-
-          // Phone Number Field
-          Expanded(
-            child: TextFormField(
-              controller: mobileController,
-              enabled: canEditPhone,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                hintText: "Enter mobile number",
-                hintStyle: GoogleFonts.urbanist(
-                  color: Color(0xffFFFFFF),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              keyboardType: TextInputType.phone,
-            ),
-          ),
-
-          // OTP Button (Google Only)
-          if (signupType == "Google" && !phoneOtpVerified)
-            TextButton(
-              onPressed: isSendingPhoneOtp ? null : requestPhoneOtp,
-              child: Text(
-                isSendingPhoneOtp
-                    ? "Sending..."
-                    : phoneOtpSent
-                    ? "Resend"
-                    : "Send OTP",
-                style: const TextStyle(color: appclr.blue),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-
 
   loginbutton() {
 
@@ -1213,7 +1139,7 @@ class _setup_profileState extends State<setup_profile> {
           userID: "",
           name: nameController.text.trim(),
           email: emailController.text.trim(),
-          phoneNumber: mobileController.text.trim(),
+          phoneNumber: "$selectedCountryCode${mobileController.text.trim()}",  // ✅ FIXED
           address: addressController.text.trim(),
           gender: selectedValue ?? "",
           dateOfBirth: _selectedDate != null
@@ -1226,6 +1152,7 @@ class _setup_profileState extends State<setup_profile> {
           kycVerification: false,
           referBy: "",
         );
+
 
         // -----------------------------
         // API CALL
@@ -1244,10 +1171,7 @@ class _setup_profileState extends State<setup_profile> {
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => DiditKYCWebviewScreen(
-                kycUrl: kycUrl,
-                profileID: profileId!, // Pass the ID
-              ),
+              builder: (context) =>HomeLayout()
             ),
           );
 
@@ -1277,7 +1201,7 @@ class _setup_profileState extends State<setup_profile> {
         ),
         child: const Center(
           child: SupportText(
-            text: 'Proceed with KYC',
+            text: 'Continue',
             fontSize: 15,
             fontWeight: FontWeight.w500,
             color: appclr.profile_clr1,
@@ -1287,6 +1211,8 @@ class _setup_profileState extends State<setup_profile> {
       ),
     );
   }
+
+
   void showBottomInfo(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

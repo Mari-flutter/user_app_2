@@ -154,14 +154,17 @@ class _ActiveChitsPageState extends State<ActiveChitsPage> {
 
   Future<void> _loadActiveChits() async {
     setState(() => isLoading = true);
-
+    final Token = await SecureStorageService.getToken();
     try {
       final url = Uri.parse(
         "https://foxlchits.com/api/JoinToChit/profile/${widget.profileId}/chits?userID=${widget.userId}",
       );
-      // print('🌍 Active Chits API URL: $url');
+      print('🌍 Active Chits API URL: $url');
 
-      final response = await http.get(url);
+      final response = await http.get(url,headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -342,6 +345,7 @@ class _ActiveChitsPageState extends State<ActiveChitsPage> {
                                       CurrentMember : chit.currentMemberCount,
                                       auctionSchedules: chit.auctionSchedules,
                                       auctionDateTime: chit.duedate.toIso8601String(),
+                                      formancommission:chit.commission,
                                     ),
                                   ),
                                 );
@@ -519,13 +523,17 @@ class _RequestedChitsPageState extends State<RequestedChitsPage> {
 
   Future<void> _loadRequestedChits() async {
     setState(() => isLoading = true);
-
+    final Token = await SecureStorageService.getToken();
     try {
       final url = Uri.parse(
         "https://foxlchits.com/api/JoinToChit/${widget.profileId}/requests?userID=${widget.userId}",
       );
+      print("request url:$url");
 
-      final response = await http.get(url);
+      final response = await http.get(url,headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -580,10 +588,13 @@ class _RequestedChitsPageState extends State<RequestedChitsPage> {
         "paymentId": paymentId,
         "orderId": orderId,
       };
-
+      final Token = await SecureStorageService.getToken();
       final response = await http.post(
         Uri.parse(_confirmPaymentApiUrl),
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $Token",
+        },
         body: jsonEncode(requestBody),
       );
 

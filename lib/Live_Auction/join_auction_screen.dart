@@ -124,11 +124,15 @@ class _join_auctionState extends State<join_auction> {
   }
 
   Future<void> _fetchActiveChits() async {
+    final Token = await SecureStorageService.getToken();
     try {
       final url = Uri.parse(
         "https://foxlchits.com/api/JoinToChit/profile/$profileId/chits?userID=$userId",
       );
-      final response = await http.get(url);
+      final response = await http.get(url,headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         final chits = data.map((e) => ActiveChit.fromJson(e)).toList();

@@ -30,6 +30,7 @@ class LocalStorageManager {
   static Future<void> saveToken(String token) async {
     final box = Hive.box('authBox');
     await box.put('accessToken', token);
+    print("saved token $token");
   }
 
   static String? getToken() {
@@ -301,34 +302,7 @@ class LocalStorageManager {
     await box.delete('explore_chit_${chitId}_$userId');
     print('🗑️ Cleared explore chit cache for $chitId');
   }
-  // ===========================================================
-  // 🔹 PAST AUCTION RESULTS CACHE
-  // ===========================================================
 
-  // static Future<void> savePastAuctionResults(List<PastAuctionResultModel> results) async {
-  //   final box = Hive.box('chitBox');
-  //   final jsonString = jsonEncode(results.map((e) => e.toJson()).toList());
-  //   await box.put('past_auction_results', jsonString);
-  //   print('✅ Past auction results saved to Hive (${results.length} items)');
-  // }
-  //
-  // static List<PastAuctionResultModel> getPastAuctionResults() {
-  //   final box = Hive.box('chitBox');
-  //   final jsonString = box.get('past_auction_results');
-  //   if (jsonString != null) {
-  //     final data = jsonDecode(jsonString) as List;
-  //     print('📦 Loaded ${data.length} past auction results from Hive');
-  //     return data.map((e) => PastAuctionResultModel.fromJson(e)).toList();
-  //   }
-  //   print('⚠️ No past auction results found in Hive');
-  //   return [];
-  // }
-  //
-  // static Future<void> clearPastAuctionResults() async {
-  //   final box = Hive.box('chitBox');
-  //   await box.delete('past_auction_results');
-  //   print('🗑️ Past auction results cache cleared');
-  // }
 
   // ===========================================================
   // 🔹 ACTIVE & UPCOMING CHITS CACHE

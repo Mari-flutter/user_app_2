@@ -276,7 +276,7 @@ class _WinnerScreenState extends State<WinnerScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      "   • The declared winner will receive the prize amount of ₹1,88,000.",
+                      "   • The declared winner will receive the prize amount of ₹${(widget.chitValue - widget.winnerBid).toStringAsFixed(0)}.",
                       style: GoogleFonts.urbanist(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,

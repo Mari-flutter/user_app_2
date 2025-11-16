@@ -12,9 +12,11 @@ import 'package:user_app/Notification/notification_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:user_app/Services/secure_storage.dart';
+import 'package:user_app/Whatsapp_support.dart';
 
 import '../Helper/Local_storage_manager.dart';
 import '../Models/Chit_Groups/chit_groups.dart';
+import '../Models/Profile/profile_model.dart';
 import '../Models/User_chit_breakdown/pending_payment_model.dart';
 import '../Models/User_chit_breakdown/user_chit_breakdown_model.dart';
 import 'package:shimmer/shimmer.dart';
@@ -62,7 +64,7 @@ class _homeState extends State<home> with AutomaticKeepAliveClientMixin {
 
   Future<void> _loadPendingPayments() async {
     try {
-      final payments = await PendingPaymentService.fetchPendingPayments();
+      final payments = await PendingPaymentService.fetchPendingPayments(context);
 
       // ✅ Only include real pending ones
       final filtered = payments.where((p) => p.pendingAmount > 0).toList();
@@ -121,6 +123,7 @@ class _homeState extends State<home> with AutomaticKeepAliveClientMixin {
   Future<void> _loadUserChitSummary(String profileId) async {
     // Load from Hive cache first
     final cached = LocalStorageManager.getUserChitBreakdown(profileId);
+    final Token = await SecureStorageService.getToken();
     if (cached != null) {
       _userChitSummary = cached;
       setState(() {}); // instantly show cached data
@@ -132,8 +135,15 @@ class _homeState extends State<home> with AutomaticKeepAliveClientMixin {
         'https://foxlchits.com/api/JoinToChit/profile/$profileId/chits-summary',
       );
 
-      final response = await http.get(url);
-
+      final response = await http.get(url,headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
+      print("token $Token");
+      if (response.statusCode == 401) {
+        await SecureStorageService.handleUnauthorized(context);// empty list to avoid crashing Home screen
+        return;
+      }
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final freshData = UserChitBreakdownModel.fromJson(data);
@@ -158,11 +168,19 @@ class _homeState extends State<home> with AutomaticKeepAliveClientMixin {
   Future<void> _loadProfileId() async {
     profileId = await storage.read(key: 'profileId');
     print('ProfileId: $profileId');
-    final username = await SecureStorageService.getUserName();
-    setState(() {
-      userName = username;
-    });
+
+    if (profileId != null && profileId!.isNotEmpty) {
+      try {
+        Profile p = await getProfileData();
+        setState(() {
+          userName = p.name;   // ✔ Correct name from server
+        });
+      } catch (e) {
+        print("⚠️ Failed to fetch name: $e");
+      }
+    }
   }
+
 
   Future<void> _loadChits() async {
     // Load cached data first
@@ -200,10 +218,18 @@ class _homeState extends State<home> with AutomaticKeepAliveClientMixin {
   }
 
   Future<List<Chit_Group_Model>> _fetchFromApi() async {
+    final Token = await SecureStorageService.getToken();
     final url = Uri.parse(
       'https://foxlchits.com/api/MainBoard/ChitsCreate/active-upcoming',
     );
-    final response = await http.get(url);
+    final response = await http.get(url, headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer $Token",
+    },);
+    if (response.statusCode == 401) {
+      await SecureStorageService.handleUnauthorized(context);// empty list to avoid crashing Home screen
+      return[];
+    }
     if (response.statusCode == 200) {
       final List<dynamic> jsonData = jsonDecode(response.body);
       final chits = jsonData.map((e) => Chit_Group_Model.fromJson(e)).toList();
@@ -211,6 +237,26 @@ class _homeState extends State<home> with AutomaticKeepAliveClientMixin {
       return chits;
     } else {
       throw Exception('Failed to load chits from API');
+    }
+  }
+
+  Future<Profile> getProfileData() async {
+    final Token = await SecureStorageService.getToken();
+    final response = await http.get(
+      Uri.parse("https://foxlchits.com/api/Profile/profile/${profileId}"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },
+    );
+    print(profileId);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print(data);
+      return Profile.fromJson(data);
+    } else {
+      throw Exception('Failed to load profile');
     }
   }
 
@@ -278,6 +324,21 @@ class _homeState extends State<home> with AutomaticKeepAliveClientMixin {
                                 ),
                               ),
                               Spacer(),
+                              GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => WhatsAppScreen(),
+                                      ),
+                                    );
+                                  },
+                                child:Container(
+                                  width: 30,
+                                  height:30,
+                                  color:Colors.white
+                                )
+                              ),
                               GestureDetector(
                                 onTap: () {
                                   Navigator.push(

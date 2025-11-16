@@ -74,6 +74,7 @@ class _UpcomingAuctionPageState extends State<UpcomingAuctionPage> {
                 _addMonths(DateTime.parse(chit.duedate), chit.timePeriod - 1)),
             "duration": "${chit.timePeriod} Months",
             "auctionDate": _formatDate(auctionDate),
+            "auctionTime": _formatTime(auctionDate),
           });
           break; // ✅ Stop after first valid upcoming auction per chit
         }
@@ -97,9 +98,41 @@ class _UpcomingAuctionPageState extends State<UpcomingAuctionPage> {
 
 
 
+  String _formatTime(DateTime dt) {
+    int hour = dt.hour;
+    String minute = dt.minute.toString().padLeft(2, '0');
+    String period = hour >= 12 ? "PM" : "AM";
+
+    if (hour == 0) hour = 12;
+    else if (hour > 12) hour -= 12;
+
+    return "$hour:$minute $period";
+  }
 
   String _formatDate(DateTime d) =>
       "${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}";
+  String _formatDateTime(DateTime dt) {
+    // DATE
+    const monthNames = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ];
+
+    final dateStr =
+        "${dt.day.toString().padLeft(2, '0')} ${monthNames[dt.month - 1]} ${dt.year}";
+
+    // TIME
+    int hour = dt.hour;
+    String minute = dt.minute.toString().padLeft(2, '0');
+    String period = hour >= 12 ? "PM" : "AM";
+
+    if (hour == 0) hour = 12;
+    else if (hour > 12) hour -= 12;
+
+    final timeStr = "$hour:$minute $period";
+
+    return "$dateStr at $timeStr";
+  }
 
   DateTime _addMonths(DateTime date, int monthsToAdd) {
     final int totalMonths = date.month + monthsToAdd;
@@ -245,16 +278,20 @@ class ChitCard extends StatelessWidget {
               "Mon.Contribution : ${chit["contribution"]}"),
           _buildInfoRow("Total Members : ${chit["totalMembers"]}",
               "Added Members : ${chit["addedMembers"]}"),
-          _buildInfoRow("Start Date : ${chit["startDate"]}",
-              "End Date : ${chit["endDate"]}"),
           _buildInfoRow("Duration : ${chit["duration"]}",
-              "Auction Date : ${chit["auctionDate"]}"),
+              "End Date : ${chit["endDate"]}"),
+          _buildInfoRow(
+              "Auction Date : ${chit["auctionDate"]}", "Auction Time : ${chit["auctionTime"]}"),
         ],
       ),
     );
   }
 
   Widget _buildInfoRow(String left, String right) {
+    bool isAuctionRow =
+        left.contains("Auction Date") || left.contains("Auction Time") ||
+            right.contains("Auction Date") || right.contains("Auction Time");
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
@@ -263,7 +300,7 @@ class ChitCard extends StatelessWidget {
           Text(
             left,
             style: GoogleFonts.urbanist(
-              color: const Color(0xffF8F8F8),
+              color: isAuctionRow ? const Color(0xff1762FC) : const Color(0xffF8F8F8),
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -271,9 +308,7 @@ class ChitCard extends StatelessWidget {
           Text(
             right,
             style: GoogleFonts.urbanist(
-              color: right.contains("Auction Date")
-                  ? const Color(0xff1762FC)
-                  : const Color(0xffF8F8F8),
+              color: isAuctionRow ? const Color(0xff1762FC) : const Color(0xffF8F8F8),
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),

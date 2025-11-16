@@ -53,13 +53,16 @@ class _receiptsState extends State<receipts> {
       String? profileId = await SecureStorageService.getProfileId();
       print("🟡 profileId = $profileId");
       print("🟡 chitId = ${widget.chitId}");
-
+      final Token = await SecureStorageService.getToken();
       final url = Uri.parse(
         "https://foxlchits.com/api/PaymentHistory/by-profile-and-chit?profileId=$profileId&chitId=${widget.chitId}",
       );
       print("🟡 API URL = $url");
 
-      final response = await http.get(url);
+      final response = await http.get(url,headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
       print("🟣 API STATUS = ${response.statusCode}");
       print("🟣 API BODY = ${response.body}");
 

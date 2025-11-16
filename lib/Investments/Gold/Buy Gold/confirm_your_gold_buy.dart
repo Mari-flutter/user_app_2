@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:user_app/Investments/Gold/Buy%20Gold/confirmation_receipt_for_buy_gold.dart';
-import '../../../Models/Investments/Gold/buy_gold_model.dart';
 import '../../../Services/secure_storage.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -67,9 +66,14 @@ class _confirm_your_buyingState extends State<confirm_your_buying> {
     super.dispose();
   }
   Future<void> _fetchServiceCharge() async {
+    final Token = await SecureStorageService.getToken();
     try {
       final response = await http.get(
         Uri.parse("https://foxlchits.com/api/Termsconditions/Forbidden"),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $Token",
+        },
       );
 
       if (response.statusCode == 200) {
@@ -89,9 +93,14 @@ class _confirm_your_buyingState extends State<confirm_your_buying> {
   }
 
   Future<void> _fetchTaxFromApi() async {
+    final Token = await SecureStorageService.getToken();
     try {
       final response = await http.get(
         Uri.parse("https://foxlchits.com/api/Termsconditions/Tax"),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $Token",
+        },
       );
 
       if (response.statusCode == 200) {

@@ -3,16 +3,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:user_app/Bottom_Navbar/bottom_navigation_bar.dart';
 import 'package:user_app/Login/login_screen.dart';
+import 'package:permission_handler/permission_handler.dart'; // 🔑 Added for Permissions
 
 import 'Helper/Local_storage_manager.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Initialize Local Storage
   await LocalStorageManager.init();
+
+  // 🔑 Request Permissions for KYC Camera/Microphone access
+  await [
+    Permission.camera,
+    Permission.microphone,
+    Permission.storage, // Recommended for older Android devices and file pickers
+  ].request();
+
   runApp(const MyApp());
 }
 
@@ -22,12 +35,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: AuthCheck()
+        debugShowCheckedModeBanner: false,
+        title: 'Flutter Demo',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        ),
+        home: const AuthCheck()
     );
   }
 }
@@ -67,7 +80,8 @@ class _AuthCheckState extends State<AuthCheck> {
     if (isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     } else {
-      return isLoggedIn ? HomeLayout() : const login();
+      // Assuming HomeLayout() is your BottomNavigationBar equivalent
+      return isLoggedIn ? const HomeLayout() : const login();
     }
   }
 }

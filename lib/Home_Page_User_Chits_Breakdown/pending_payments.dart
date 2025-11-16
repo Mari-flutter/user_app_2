@@ -25,7 +25,7 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
 
   Future<void> fetchPendingPayments() async {
     try {
-      final payments = await PendingPaymentService.fetchPendingPayments();
+      final payments = await PendingPaymentService.fetchPendingPayments(context);
 
       // ✅ Show only pending payments
       final filtered = payments.where((p) => p.pendingAmount > 0).toList();

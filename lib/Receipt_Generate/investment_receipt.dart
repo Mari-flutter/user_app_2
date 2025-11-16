@@ -193,10 +193,9 @@ Future<void> InvestmentReceiptPDF(
               pw.SizedBox(height: 10),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
 
                       pw.SizedBox(height: 15),
@@ -214,7 +213,7 @@ Future<void> InvestmentReceiptPDF(
                     ],
                   ),
                   pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
                       _detailRowEnd("Minimum Duration", data['Minimumduration'], boldFont),
                       pw.SizedBox(height: 15),

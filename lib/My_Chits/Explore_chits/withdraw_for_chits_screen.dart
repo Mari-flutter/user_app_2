@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:user_app/My_Chits/Explore_chits/add_account_for_chits_screen.dart';
 import 'package:user_app/Services/secure_storage.dart';
 
+import '../../Models/My_Chits/withdraw_for_chit_model.dart';
 import 'explore_chit_screen.dart';
 
 class withdraw_for_chits extends StatefulWidget {
@@ -15,19 +19,74 @@ class withdraw_for_chits extends StatefulWidget {
 class _withdraw_for_chitsState extends State<withdraw_for_chits> {
   String? Username;
   String? UserID;
+  String?Profileid;
   @override
   void initState() {
     super.initState();
-    _loadUserName();
+    loadData();
   }
+
+  Future<void> loadData() async {
+    await _loadUserName();     // 🔥 ensures Profileid is ready
+    await fetchWithdrawAmount();
+  }
+
+
+
   Future<void> _loadUserName() async {
     final username = await SecureStorageService.getUserName();
     final userId = await SecureStorageService.getUserId();
+    final profileid = await SecureStorageService.getProfileId();
     setState(() {
       Username = username;
       UserID = userId;
+      Profileid = profileid;
     });
   }
+  double? withdrawAmount;
+  bool isLoading = true;
+
+  Future<void> fetchWithdrawAmount() async {
+    final Token = await SecureStorageService.getToken();
+    try {
+      final url = Uri.parse(
+          'https://foxlchits.com/api/Auctionwinner/$Profileid'
+      );
+
+
+      final response = await http.get(url,headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        final list = data['withdrawAmounts'] as List;
+
+        if (list.isNotEmpty) {
+          final model = WithdrawAmountModel.fromJson(list[0]);
+
+          setState(() {
+            withdrawAmount = model.withdrawAmount;
+            isLoading = false;
+          });
+        } else {
+          setState(() {
+            withdrawAmount = 0;
+            isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      print("Error fetching withdraw amount: $e");
+      setState(() {
+        withdrawAmount = 0;
+        isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -115,7 +174,7 @@ class _withdraw_for_chitsState extends State<withdraw_for_chits> {
                         Align(
                           alignment: Alignment.bottomRight,
                           child: Text(
-                            '₹1,85,000',
+                            '₹${(withdrawAmount ?? 0).toStringAsFixed(0)}',
                             style: GoogleFonts.urbanist(
                               textStyle: const TextStyle(
                                 color: Color(0xff07C66A),
@@ -140,138 +199,9 @@ class _withdraw_for_chitsState extends State<withdraw_for_chits> {
                     ),
                   ),
                 ),
-                SizedBox(height: size.height * 0.03),
-                Container(
-                  width: double.infinity,
-                  height: 149,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(11),
-                    color: Color(0xff101010),
-                  ),
-
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: size.width * 0.05,
-                      vertical: size.height * 0.015,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Payment Details',
-                          style: GoogleFonts.urbanist(
-                            textStyle: const TextStyle(
-                              color: Color(0xffFFFFFF),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: size.height * 0.02),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Credited From',
-                                  style: GoogleFonts.urbanist(
-                                    textStyle: const TextStyle(
-                                      color: Color(0xff6E6E6E),
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                Text(
-                                  'Foxl Chit Funds',
-                                  style: GoogleFonts.urbanist(
-                                    textStyle: const TextStyle(
-                                      color: Color(0xff989898),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(height: size.height * 0.02),
-                                Text(
-                                  'Winning Amount from',
-                                  style: GoogleFonts.urbanist(
-                                    textStyle: const TextStyle(
-                                      color: Color(0xff6E6E6E),
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                Text(
-                                  '#FO8756 - 2L Chits',
-                                  style: GoogleFonts.urbanist(
-                                    textStyle: const TextStyle(
-                                      color: Color(0xff989898),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  'Credited Date',
-                                  style: GoogleFonts.urbanist(
-                                    textStyle: const TextStyle(
-                                      color: Color(0xff6E6E6E),
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                Text(
-                                  '11-11-2025',
-                                  style: GoogleFonts.urbanist(
-                                    textStyle: const TextStyle(
-                                      color: Color(0xff989898),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(height: size.height * 0.02),
-                                Text(
-                                  'Transaction Id',
-                                  style: GoogleFonts.urbanist(
-                                    textStyle: const TextStyle(
-                                      color: Color(0xff6E6E6E),
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                Text(
-                                  'TXN2025110100123',
-                                  style: GoogleFonts.urbanist(
-                                    textStyle: const TextStyle(
-                                      color: Color(0xff989898),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SizedBox(height: size.height*0.35),
+                SizedBox(height: size.height*0.57),
                 GestureDetector(
-                  onTap: (){Navigator.push(context,MaterialPageRoute(builder: (context)=>add_account_for_chits()));},
+                  onTap: (){Navigator.push(context,MaterialPageRoute(builder: (context)=>Chit_add_account(withdrawalAmount: withdrawAmount!)));},
                   child: Container(
                     width: double.infinity,
                     height: 38,

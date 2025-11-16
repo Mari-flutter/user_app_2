@@ -3,17 +3,29 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:shimmer/shimmer.dart';
+import 'package:user_app/Services/secure_storage.dart';
 
 import '../Models/Investments/Gold/gold_scheme_transaction_model.dart';
 
-class transactions_history_for_gold_scheme extends StatelessWidget {
+class transactions_history_for_gold_scheme extends StatefulWidget {
   const transactions_history_for_gold_scheme({super.key});
 
-  Future<List<GoldSchemeTransaction>> fetchGoldSchemePayments() async {
-    final url = Uri.parse(
-        "https://foxlchits.com/api/PaymentHistory/by-profile-Goldscheme/f864ab0d-dfd0-4c28-901e-df65cbfe9a1b");
+  @override
+  State<transactions_history_for_gold_scheme> createState() => _transactions_history_for_gold_schemeState();
+}
 
-    final response = await http.get(url);
+class _transactions_history_for_gold_schemeState extends State<transactions_history_for_gold_scheme> {
+
+  Future<List<GoldSchemeTransaction>> fetchGoldSchemePayments() async {
+    final Token = await SecureStorageService.getToken();
+    final  profileId= await SecureStorageService.getProfileId();
+    final url = Uri.parse(
+        "https://foxlchits.com/api/PaymentHistory/by-profile-Goldscheme/$profileId");
+
+    final response = await http.get(url,headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer $Token",
+    },);
 
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);

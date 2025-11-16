@@ -1,11 +1,12 @@
 class MyDocument {
-  final String id; // documentVerificationId
-  final String documentTypeId; // actual type id for upload
+  final String id;
+  final String documentTypeId;
   final String documentType;
   final String? documentPath;
   final String status;
   final String? uploadedAt;
   final String? verifiedAt;
+  final List<Approval> approvals; // NEW
 
   MyDocument({
     required this.id,
@@ -15,27 +16,33 @@ class MyDocument {
     required this.status,
     this.uploadedAt,
     this.verifiedAt,
+    required this.approvals, // NEW
   });
 
   factory MyDocument.fromJson(Map<String, dynamic> json) {
     return MyDocument(
-      id: json['documentVerificationId']?.toString() ?? '',
-      documentTypeId: json['documentTypeId']?.toString() ?? '',
-      documentType: json['documentType']?.toString() ?? '',
+      id: json['id']?.toString() ?? '',
+      documentTypeId: json['documentTypeID']?.toString() ?? '',
+      documentType: json['documentType']?['name']?.toString() ?? '',
       documentPath: json['documentPath']?.toString(),
       status: json['status']?.toString() ?? '',
       uploadedAt: json['uploadedAt']?.toString(),
       verifiedAt: json['verifiedAt']?.toString(),
+      approvals: (json["approvals"] as List? ?? [])
+          .map((e) => Approval.fromJson(e))
+          .toList(),
     );
   }
-
-  Map<String, dynamic> toJson() => {
-    'documentVerificationId': id,
-    'documentTypeId': documentTypeId,
-    'documentType': documentType,
-    'documentPath': documentPath,
-    'status': status,
-    'uploadedAt': uploadedAt,
-    'verifiedAt': verifiedAt,
-  };
 }
+class Approval {
+  final bool isApproved;
+
+  Approval({required this.isApproved});
+
+  factory Approval.fromJson(Map<String, dynamic> json) {
+    return Approval(
+      isApproved: json["isApproved"] ?? false,
+    );
+  }
+}
+

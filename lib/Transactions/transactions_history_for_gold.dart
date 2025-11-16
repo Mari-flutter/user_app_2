@@ -41,6 +41,7 @@ class _transactions_history_for_goldState
   }
 
   Future<void> loadTransactions() async {
+    final Token = await SecureStorageService.getToken();
     final buyUrl =
         "https://foxlchits.com/api/PaymentHistory/buy-profile/$profileId";
     final sellUrl =
@@ -49,8 +50,14 @@ class _transactions_history_for_goldState
     List<GoldTransaction> temp = [];
 
     try {
-      final buyRes = await http.get(Uri.parse(buyUrl));
-      final sellRes = await http.get(Uri.parse(sellUrl));
+      final buyRes = await http.get(Uri.parse(buyUrl),headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
+      final sellRes = await http.get(Uri.parse(sellUrl),headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
 
       if (buyRes.statusCode == 200) {
         List buy = jsonDecode(buyRes.body);

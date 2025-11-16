@@ -4,20 +4,21 @@ import 'package:user_app/My_Chits/Explore_chits/processing_transfer_screen.dart'
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-import '../../My_Chits/Explore_chits/add_account_for_chits_screen.dart';
-import '../../My_Chits/Explore_chits/instant_transfer_screen.dart';
-import '../../Services/secure_storage.dart';
+import '../../../My_Chits/Explore_chits/add_account_for_chits_screen.dart';
+import '../../../My_Chits/Explore_chits/instant_transfer_screen.dart';
+import '../../../Services/secure_storage.dart';
 
-class RE_add_account extends StatefulWidget {
-  const RE_add_account({super.key, required this.withdrawalAmount});
+
+class Gold_add_account extends StatefulWidget {
+  const Gold_add_account({super.key, required this.withdrawalAmount});
   final double withdrawalAmount;
 
 
   @override
-  State<RE_add_account> createState() => _RE_add_accountState();
+  State<Gold_add_account> createState() => _Gold_add_accountState();
 }
 
-class _RE_add_accountState extends State<RE_add_account> {
+class _Gold_add_accountState extends State<Gold_add_account> {
   final _formKey = GlobalKey<FormState>();
 
 
@@ -43,7 +44,7 @@ class _RE_add_accountState extends State<RE_add_account> {
   void initState() {
     super.initState();
     reenteraccountNumbercontroller.addListener(_checkAccountMatch);
-    print('DEBUG: Amount received in RE_add_account: ${widget.withdrawalAmount}');
+    print('DEBUG: Amount received in Gold_add_account: ${widget.withdrawalAmount}');
   }
 
   @override
@@ -72,7 +73,7 @@ class _RE_add_accountState extends State<RE_add_account> {
   // API for Instant Transfer
   Future<void> _instantTransfer(BuildContext context) async {
     final Token = await SecureStorageService.getToken();
-    const String apiUrl = "https://foxlchits.com/api/RazorPayWithdraw/RNwithdraw";
+    const String apiUrl = "https://foxlchits.com/api/RazorPayWithdraw/gold-wallet-withdraw";
     final String accountHolderName = banknamecontroller.text.trim();
     final _email = await SecureStorageService.getMail();
     final mobilenumber = await SecureStorageService.getMobileNumber();
@@ -87,7 +88,7 @@ class _RE_add_accountState extends State<RE_add_account> {
       "accountNumber": accountNumbercontroller.text,
       "ifsc": ifsccontroller.text,
       "amount": widget.withdrawalAmount, // 🔑 Using passed amount
-      "narration": "Real Estate Instant Withdrawal",
+      "narration": "Gold Instant Withdrawal",
     };
 
     print('DEBUG: Calling Instant Transfer API: $apiUrl');
@@ -151,7 +152,7 @@ class _RE_add_accountState extends State<RE_add_account> {
   // API for Processing Transfer
   Future<void> _processingTransfer(BuildContext context) async {
     final Token = await SecureStorageService.getToken();
-    const String apiUrl = "https://foxlchits.com/api/WithdrawAmount/RE-withdraw-request";
+    const String apiUrl = "https://foxlchits.com/api/WithdrawAmount/gold-wallet-withdraw-request";
     final String accountHolderName = banknamecontroller.text.trim();
     final _email = await SecureStorageService.getMail();
     final _profileID = await SecureStorageService.getProfileId();
@@ -166,6 +167,7 @@ class _RE_add_accountState extends State<RE_add_account> {
       "userID": _userID,
       "ifsc": ifsccontroller.text,
       "amount": widget.withdrawalAmount, // 🔑 Using passed amount
+      "narration": "Gold Processing Withdrawal",
     };
 
     print('DEBUG: Calling Processing Transfer API: $apiUrl');
@@ -436,17 +438,17 @@ class _RE_add_accountState extends State<RE_add_account> {
                         borderRadius: BorderRadius.circular(11),
                         color: const Color(0xff4770CB),
                       ),
-                      child:_isLoading
-                          ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                          : Center(
-                        child: Text(
+                      child: Center(
+                        child:_isLoading
+                            ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                            : Text(
                           'Withdraw to Account',
                           style: GoogleFonts.urbanist(
                             color: Colors.white,

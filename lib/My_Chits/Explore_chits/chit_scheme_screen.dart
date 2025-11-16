@@ -18,6 +18,7 @@ class chit_scheme extends StatefulWidget {
   final double OtherCharges;
   final double Penalty;
   final double Taxes;
+  final double Formancommission;
   final double Value;
   final double Contribution;
   final String nextAuctionDate;
@@ -34,6 +35,7 @@ class chit_scheme extends StatefulWidget {
     required this.OtherCharges,
     required this.Penalty,
     required this.Taxes,
+    required this.Formancommission,
     required this.ChitName,
     required this.Value,
     required this.Contribution,
@@ -109,6 +111,29 @@ class _chit_schemeState extends State<chit_scheme> {
   void dispose() {
     _timer?.cancel(); // Cancel timer to prevent memory leaks
     super.dispose();
+  }
+  String formatIsoDateTime(String iso) {
+    try {
+      final dt = DateTime.parse(iso);
+
+      const monthNames = [
+        "January","February","March","April","May","June",
+        "July","August","September","October","November","December"
+      ];
+
+      final dateStr = "${dt.day} ${monthNames[dt.month - 1]} ${dt.year}";
+
+      int hour = dt.hour;
+      final minute = dt.minute.toString().padLeft(2,'0');
+      final ampm = hour >= 12 ? "PM" : "AM";
+
+      if (hour == 0) hour = 12;
+      else if (hour > 12) hour -= 12;
+
+      return "$dateStr at $hour:$minute $ampm";
+    } catch (e) {
+      return iso;
+    }
   }
 
   @override
@@ -595,8 +620,8 @@ class _chit_schemeState extends State<chit_scheme> {
                                   ),
                                 ),
                                 Text(
-                                  '${_formatDisplayDate(widget.nextAuctionDate)} at 10:00 AM',
-                                  style: GoogleFonts.urbanist(
+                                    formatIsoDateTime(widget.nextAuctionDate),
+                                    style: GoogleFonts.urbanist(
                                     textStyle: const TextStyle(
                                       color: Color(0xffDDDDDD),
                                       fontSize: 10,
@@ -637,7 +662,6 @@ class _chit_schemeState extends State<chit_scheme> {
 
                 Container(
                   width: double.infinity,
-                  height: 183,
                   decoration: BoxDecoration(
                     color: Color(0xff151515),
                     borderRadius: BorderRadius.circular(11),
@@ -728,6 +752,32 @@ class _chit_schemeState extends State<chit_scheme> {
                             ),
                             Text(
                               '${widget.Taxes}',
+                              style: GoogleFonts.urbanist(
+                                textStyle: const TextStyle(
+                                  color: Color(0xffDDDDDD),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: size.height * 0.01),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Forman Commission',
+                              style: GoogleFonts.urbanist(
+                                textStyle: const TextStyle(
+                                  color: Color(0xffDDDDDD),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '${widget.Formancommission}',
                               style: GoogleFonts.urbanist(
                                 textStyle: const TextStyle(
                                   color: Color(0xffDDDDDD),

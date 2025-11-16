@@ -409,7 +409,7 @@ class _get_physical_goldState extends State<get_physical_gold> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => store_selection(selectedGrams: grams,EstimateValue:approxAmount),
+                                  builder: (context) => store_selection(selectedGrams: grams,EstimateValue:approxAmount,goldvalue:_goldValue),
                                 ),
                               );
                             } else {

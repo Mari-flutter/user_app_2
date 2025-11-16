@@ -5,11 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:user_app/Investments/Gold/gold_investment_screen.dart';
+import 'package:user_app/My_Investments/gold_scheme_monthly_pay_due.dart';
 
 import '../Helper/Local_storage_manager.dart';
 import '../Investments/Gold/Get Physical Gold/get_physical_gold_screen.dart';
 import '../Models/My_Investment/myinvestment_gold_model.dart';
-import '../Receipt_Generate/gold_scheme_receipt.dart';
 import '../Services/secure_storage.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -44,9 +44,6 @@ class _my_investment_goldState extends State<my_investment_gold> {
 
   bool isDownloading = false;
 
-  String? UserName;
-  String? UserId;
-  String? UserMobileNumber;
   String convertionDate = '';
   String _monthName(int month) {
     const months = [
@@ -147,7 +144,6 @@ class _my_investment_goldState extends State<my_investment_gold> {
     final now = DateTime.now();
     convertionDate =
     "${now.day.toString().padLeft(2, '0')} ${_monthName(now.month)} ${now.year}";
-    _loadProfileId();
 
     _autoRefreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
       if (mounted) _fetchMyInvestmentGold();
@@ -176,13 +172,16 @@ class _my_investment_goldState extends State<my_investment_gold> {
         });
         print('💾 Showing cached MyInvestmentGoldModel data');
       }
-
+      final Token = await SecureStorageService.getToken();
       // 🧠 2️⃣ Fetch new data in background
       final url = Uri.parse(
         'https://foxlchits.com/api/SchemeMember/user/$profileId',
       );
       print('📡 Fetching latest MyInvestmentGoldModel → $url');
-      final response = await http.get(url);
+      final response = await http.get(url,headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -233,16 +232,6 @@ class _my_investment_goldState extends State<my_investment_gold> {
     );
   }
 
-  Future<void> _loadProfileId() async {
-    final username = await SecureStorageService.getUserName();
-    final userId = await SecureStorageService.getUserId();
-    final userMobileNumber = await SecureStorageService.getMobileNumber();
-    setState(() {
-      UserName = username;
-      UserId = userId;
-      UserMobileNumber = userMobileNumber;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -637,7 +626,7 @@ class _my_investment_goldState extends State<my_investment_gold> {
                               ],
                             ),
                             Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
                                   'Target Amount',
@@ -708,66 +697,11 @@ class _my_investment_goldState extends State<my_investment_gold> {
                         Align(
                           alignment: Alignment.bottomRight,
                           child: GestureDetector(
-                            onTap: () async {
-                              if (isDownloading) return;
-                              String maturityText = '--';
-                              String Installment = '$completedMonths of $totalMonths ';
-                              setState(() => isDownloading = true);
-                              String amountInWords = convertAmountToWords(scheme.totalPaid.toInt());
-                              try{
-                                // Parse join date
-                                final joinDate = DateTime.parse(scheme.joinDate);
-
-                                // Add (duration - 1) months to get maturity
-                                final maturityDate = DateTime(
-                                  joinDate.year,
-                                  joinDate.month + (scheme.duration - 1),
-                                  joinDate.day,
-                                );
-
-                                // Format to something like "Apr 2026"
-                                const monthNames = [
-                                  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-                                ];
-                                maturityText =
-                                "${monthNames[maturityDate.month - 1]} ${maturityDate.year}";
-                                                              String _currentDate() {
-                                  final now = DateTime.now();
-                                  const months = [
-                                    "January","February","March","April","May","June",
-                                    "July","August","September","October","November","December"
-                                  ];
-
-                                  return "${now.day.toString().padLeft(2, '0')} "
-                                      "${months[now.month - 1]} "
-                                      "${now.year}";
-                                }
-
-                                String _currentTime() {
-                                  final now = DateTime.now();
-                                  return "${now.hour.toString().padLeft(2, '0')}:"
-                                      "${now.minute.toString().padLeft(2, '0')}:"
-                                      "${now.second.toString().padLeft(2, '0')}";
-                                }
-
-                                await GoldschemeReceiptPDF(context, {
-                                  'customerName': UserName ?? '',
-                                  'contactNumber': UserMobileNumber ?? '',
-                                  'customerId': UserId ?? '',
-                                  'transactionTime': _currentTime(), // No need for ?? '' as it returns String
-                                  'transactionDate': _currentDate(), // No need for ?? '' as it returns String
-                                  'goldDetails': scheme.schemeGoldSum?.toString() ?? '0.0', // Ensure safe call and fallback
-                                  'maturityDate': maturityText, // maturityText is guaranteed non-null
-                                  'totalinvested': scheme.totalPaid?.toString() ?? '0', // Ensure safe call and fallback
-                                  'schemename': scheme.schemeName ?? '', // Ensure fallback if schemeName is null
-                                  'intsallment': Installment, // Installment is guaranteed non-null (String)
-                                  'amountinWords':amountInWords,
-                                });
-
-                              }
-                              finally{ setState(() => isDownloading = false);}
-                            },
+                            onTap: (){Navigator.push(
+                                context,MaterialPageRoute(
+                                builder: (context)=>gold_scheme_monthly_pay_due(
+                                  schemeId:scheme.schemeId,
+                                )));},
                             child: Container(
                               width: 66,
                               height: 26,

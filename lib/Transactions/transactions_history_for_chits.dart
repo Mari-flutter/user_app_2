@@ -1,41 +1,81 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 
-class transactions_history_for_chits extends StatelessWidget {
+import '../Models/chit_transaction_model.dart';
+import '../Services/secure_storage.dart';
+import 'package:shimmer/shimmer.dart';
+
+class transactions_history_for_chits extends StatefulWidget {
   const transactions_history_for_chits({super.key});
 
-  final List<Map<String, dynamic>> transactions = const [
-    {
-      "title": "₹2 Lakh Chit",
-      "date": "01-10-2025",
-      "amount": "- ₹5,000",
-      "type": "debited",
-    },
-    {
-      "title": "Chit Winning Amount",
-      "date": "01-10-2025",
-      "amount": "+ ₹1,25,000",
-      "type": "credited",
-    },
-    {
-      "title": "Referral Bonus",
-      "date": "01-10-2025",
-      "amount": "+ ₹200",
-      "type": "credited",
-    },
-  ];
+  @override
+  State<transactions_history_for_chits> createState() =>
+      _transactions_history_for_chitsState();
+}
+
+class _transactions_history_for_chitsState
+    extends State<transactions_history_for_chits> {
+  List<ChitTransactionModel> transactions = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadTransactions();
+  }
+
+  Future<void> loadTransactions() async {
+    final profileId = await SecureStorageService.getProfileId();
+    final Token = await SecureStorageService.getToken();
+    final url = Uri.parse(
+        "https://foxlchits.com/api/PaymentHistory/by-profile-chits/$profileId");
+
+    final response = await http.get(url,headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer $Token",
+    },);
+
+    if (response.statusCode == 200) {
+      final List list = jsonDecode(response.body);
+
+      setState(() {
+        transactions =
+            list.map((e) => ChitTransactionModel.fromJson(e)).toList();
+        isLoading = false;
+      });
+    } else {
+      setState(() => isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+
+    if (isLoading) {
+      return shimmerList(size);   // 🔥 NEW shimmer effect
+    }
+
+
     return ListView.builder(
       shrinkWrap: true,
-      // ← Let ListView take minimal height
       physics: const NeverScrollableScrollPhysics(),
-      // ← Disable scrolling inside parent
       itemCount: transactions.length,
       itemBuilder: (context, index) {
         final tx = transactions[index];
+
+        // logic
+        final isDebited = tx.status == true;
+        final iconPath = isDebited
+            ? "assets/images/Transactions/debited.png"
+            : "assets/images/Transactions/credited.png";
+
+        final amountText =
+            "${isDebited ? "-" : "+"} ₹${tx.amount}";
+
         return Column(
           children: [
             Container(
@@ -51,29 +91,23 @@ class transactions_history_for_chits extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Image.asset(
-                    transactions[index]["type"] == "debited"
-                        ? "assets/images/Transactions/debited.png"
-                        : "assets/images/Transactions/credited.png",
-                    width: 20,
-                    height: 20,
-                  ),
+                  Image.asset(iconPath, width: 20, height: 20),
                   SizedBox(width: size.width * 0.04),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        tx["title"],
+                        tx.chitName,
                         style: GoogleFonts.urbanist(
                           color: const Color(0xffFFFFFF),
-                          fontSize: 17,
+                          fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       Text(
-                        tx["date"],
+                        tx.date,
                         style: GoogleFonts.urbanist(
-                          color: const Color(0xffFFFFFF),
+                          color: const Color(0xffAAAAAA),
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                         ),
@@ -82,10 +116,10 @@ class transactions_history_for_chits extends StatelessWidget {
                   ),
                   Spacer(),
                   Text(
-                    tx["amount"],
+                    amountText,
                     style: GoogleFonts.urbanist(
                       color: const Color(0xffFFFFFF),
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -98,4 +132,32 @@ class transactions_history_for_chits extends StatelessWidget {
       },
     );
   }
+  Widget shimmerList(Size size) {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 5,
+      itemBuilder: (_, __) {
+        return Column(
+          children: [
+            Shimmer.fromColors(
+              baseColor: Colors.grey.shade800,
+              highlightColor: Colors.grey.shade600,
+              child: Container(
+                width: double.infinity,
+                height: 58,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Color(0xff2C2C2C),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
 }
+

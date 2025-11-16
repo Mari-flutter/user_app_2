@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 
 import '../../Helper/Local_storage_manager.dart';
 import '../../Models/My_Chits/past_auction_result_model.dart';
+import '../../Services/secure_storage.dart';
 
 class auction_result extends StatefulWidget {
   final String chitId;
@@ -31,24 +32,35 @@ class _auction_resultState extends State<auction_result> {
   }
 
   Future<void> _loadPastAuctionResults() async {
+    final Token = await SecureStorageService.getToken();
     // 🔹 Fetch fresh data from API
     try {
       final response = await http.get(
         Uri.parse(
           "https://foxlchits.com/api/AddUsertoachit/whotakesachit/${widget.chitId}/Members",
         ),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $Token",
+        },
       );
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        final fetched = data
+        var fetched = data
             .map((e) => PastAuctionResultModel.fromJson(e))
+            .where((item) => item.chitTaken == true)
             .toList();
+
+// NOW: Latest item becomes Auction #1
+        fetched = fetched.reversed.toList();
 
         setState(() {
           pastResults = fetched;
           isLoading = false;
         });
+
+
 
       } else {
         print('❌ API failed: ${response.statusCode}');
@@ -65,18 +77,7 @@ class _auction_resultState extends State<auction_result> {
     return Scaffold(
       backgroundColor: Color(0xff000000),
       body: SafeArea(
-        child: isLoading
-            ? const Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        )
-            : pastResults.isEmpty
-            ? const Center(
-          child: Text(
-            'No Past Auction Results Found',
-            style: TextStyle(color: Colors.white),
-          ),
-        )
-            : SingleChildScrollView(
+        child:SingleChildScrollView(
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
             child: Column(
@@ -109,6 +110,23 @@ class _auction_resultState extends State<auction_result> {
                     ),
                   ],
                 ),
+                isLoading
+                    ? const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                )
+                    : pastResults.isEmpty
+                    ? Column(
+                      children: [
+                        SizedBox(height:300),
+                        const Center(
+                                          child: Text(
+                        'No Past Auction Results Found',
+                        style: TextStyle(color: Colors.white),
+                                          ),
+                                        ),
+                      ],
+                    )
+                    :
                 SizedBox(height: size.height * 0.04),
                 ...List.generate(pastResults.length, (index) {
                   final result = pastResults[index];

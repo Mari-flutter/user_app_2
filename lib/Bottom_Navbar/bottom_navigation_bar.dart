@@ -13,6 +13,8 @@ import '../Chit_Groups/chit_group_screen.dart';
 import '../Investments/Gold/gold_investment_screen.dart';
 import 'package:shimmer/shimmer.dart';
 
+import '../Services/secure_storage.dart';
+
 
 class HomeLayout extends StatefulWidget {
   final int initialTab;
@@ -67,12 +69,17 @@ class _HomeLayoutState extends State<HomeLayout> {
 
   Future<void> _loadProfileData() async {
     final id = await storage.read(key: 'profileId');
+    final Token = await SecureStorageService.getToken();
     setState(() => profileId = id);
 
     if (id != null && id.isNotEmpty) {
       try {
         final response = await http.get(
           Uri.parse("https://foxlchits.com/api/Profile/profile/$id"),
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer $Token",
+          },
         );
 
         if (response.statusCode == 200) {

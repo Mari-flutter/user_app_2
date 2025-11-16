@@ -5,6 +5,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shimmer/shimmer.dart';
 
+import '../../Models/Investments/Realestate/real_estate_transaction_model.dart';
+import '../../Services/secure_storage.dart';
 import 'RE_add_account.dart';
 
 class withdraw_for_realestate extends StatefulWidget {
@@ -23,6 +25,7 @@ class _withdraw_for_realestateState extends State<withdraw_for_realestate> {
   bool isLoading = true;
   String? _profileId;
   String? _userName; // 🔑 NEW: Variable to hold the user's name
+  List<RealEstateTxModel> transactions = [];
 
   @override
   void initState() {
@@ -52,7 +55,11 @@ class _withdraw_for_realestateState extends State<withdraw_for_realestate> {
       print("🎯 API CALL: Fetching wallet data from $apiUrl");
 
       // 3. Make API Call
-      final response = await http.get(Uri.parse(apiUrl));
+      final Token = await SecureStorageService.getToken();
+      final response = await http.get(Uri.parse(apiUrl), headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
       print("✅ Response Status Code: ${response.statusCode}");
       print("✅ Response Body: ${response.body}");
 
@@ -71,6 +78,7 @@ class _withdraw_for_realestateState extends State<withdraw_for_realestate> {
       print("⚠ Exception during API call: $e");
       setState(() => isLoading = false);
     }
+    fetchTransactions();
   }
 
   // Helper to format currency
@@ -135,7 +143,34 @@ class _withdraw_for_realestateState extends State<withdraw_for_realestate> {
       ),
     );
   }
+  Future<void> fetchTransactions() async {
+    final Token = await SecureStorageService.getToken();
+    final url = Uri.parse(
+      "https://foxlchits.com/api/PaymentHistory/by-profile-REInvestment/$_profileId",
+    );
 
+    try {
+      final response = await http.get(url, headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
+
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(response.body);
+
+        setState(() {
+          transactions =
+              data.map((json) => RealEstateTxModel.fromJson(json)).toList();
+          isLoading = false;
+        });
+      } else {
+        setState(() => isLoading = false);
+      }
+    } catch (e) {
+      print("Error fetching transactions: $e");
+      setState(() => isLoading = false);
+    }
+  }
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -149,205 +184,275 @@ class _withdraw_for_realestateState extends State<withdraw_for_realestate> {
     return Scaffold(
       backgroundColor: const Color(0xff000000),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
+          children: [
+            // TOP FIXED CARD
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
+              child: Column(
+                children: [
+                  SizedBox(height: size.height * 0.02),
+                  headerWidget(size),
+                  SizedBox(height: size.height * 0.04),
+                  isLoading ? _buildWalletShimmer(size) : walletCard(size),
+                ],
+              ),
+            ),
+            SizedBox(height: size.height*0.02),
+            // MIDDLE SCROLLABLE LIST
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
+                child: isLoading
+                    ? shimmerTransactionList(size)
+                    : transactionList(size),
+              ),
+            ),
+
+            // BOTTOM FIXED BUTTON
+            withdrawButton(size),
+            SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+  Widget shimmerTransactionList(Size size) {
+    return ListView.builder(
+      itemCount: 4,
+      itemBuilder: (_, __) {
+        return Shimmer.fromColors(
+          baseColor: Colors.grey.shade800,
+          highlightColor: Colors.grey.shade600,
+          child: Container(
+            margin: EdgeInsets.only(bottom: 12),
+            height: 120,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(11),
+              color: Colors.black,
+            ),
+          ),
+        );
+      },
+    );
+  }
+  Widget transactionList(Size size) {
+    return ListView.builder(
+      itemCount: transactions.length,
+      itemBuilder: (context, index) {
+        final tx = transactions[index];
+        String TID = tx.paymentId;
+        String date = tx.dateTime.split("T")[0];
+        String amount = "₹${tx.amount.toStringAsFixed(2)}";
+
+        return Container(
+          margin: EdgeInsets.only(bottom: 12),
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(11),
+            color: const Color(0xff101010),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Payment Details",
+                  style: GoogleFonts.urbanist(
+                    textStyle: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600),
+                  )),
+              SizedBox(height: 12),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // LEFT
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      label("Debited To"),
+                      value("Foxl Chit Funds"),
+                      SizedBox(height: 12),
+                      label("Total Amount Paid"),
+                      value("- $amount"),
+                    ],
+                  ),
+
+                  // RIGHT
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      label("Debited Date"),
+                      value(date),
+                      SizedBox(height: 12),
+                      label("Transaction ID"),
+                      value(TID),
+                    ],
+                  )
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+  Widget label(String text) {
+    return Text(text, style: GoogleFonts.urbanist(
+      textStyle: TextStyle(
+        color: Color(0xff6E6E6E),
+        fontSize: 9,
+        fontWeight: FontWeight.w600,
+      ),
+    ));
+  }
+
+  Widget value(String text) {
+    return Text(text, style: GoogleFonts.urbanist(
+      textStyle: TextStyle(
+        color: Color(0xff989898),
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+      ),
+    ));
+  }
+  Widget withdrawButton(Size size) {
+    return GestureDetector(
+      onTap: isLoading
+          ? null
+          : () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => RE_add_account(withdrawalAmount: valletAmount),
+          ),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        margin: EdgeInsets.symmetric(horizontal: size.width * 0.03),
+        height: 45,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(11),
+          color: isLoading ? Colors.blue.withOpacity(0.4) : Color(0xff4770CB),
+        ),
+        child: Center(
+          child: Text(
+            'Withdraw Amount',
+            style: GoogleFonts.urbanist(
+              textStyle: const TextStyle(
+                color: Color(0xffFFFFFF),
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+  Widget headerWidget(Size size) {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: () {
+            Navigator.pop(context);
+          },
+          child: Image.asset(
+            'assets/images/My_Chits/back_arrow.png',
+            width: 24,
+            height: 24,
+          ),
+        ),
+        SizedBox(width: size.width * 0.03),
+        Text(
+          'Withdraw',
+          style: GoogleFonts.urbanist(
+            textStyle: const TextStyle(
+              color: Color(0xffFFFFFF),
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  Widget walletCard(Size size) {
+    String displayValletAmount = '₹${formatCurrency(valletAmount)}';
+    String cardFooterText = '# ${_userName ?? 'User'}';
+
+    return Container(
+      width: size.width,
+      height: 198,
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage(
+            'assets/images/My_Chits/withdraw_card.png',
+          ),
+          fit: BoxFit.fill,
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: size.width * 0.05,
+          vertical: size.height * 0.03,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SizedBox(height: size.height * 0.02),
-                // --- Header ---
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context);
-                      },
-                      child: Image.asset(
-                        'assets/images/My_Chits/back_arrow.png',
-                        width: 24,
-                        height: 24,
-                      ),
-                    ),
-                    SizedBox(width: size.width * 0.03),
-                    Text(
-                      'Withdraw',
-                      style: GoogleFonts.urbanist(
-                        textStyle: const TextStyle(
-                          color: Color(0xffFFFFFF),
-                          fontSize: 22,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: size.height * 0.04),
-
-                // --- Wallet Card (Dynamic/Shimmer) ---
-                isLoading
-                    ? _buildWalletShimmer(size)
-                    : Container(
-                  width: size.width,
-                  height: 198,
-                  decoration: const BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage(
-                        'assets/images/My_Chits/withdraw_card.png',
-                      ),
-                      fit: BoxFit.fill,
-                    ),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: size.width * 0.05,
-                      vertical: size.height * 0.03,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Your Wallet',
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xffFFFFFF),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              'Credit',
-                              style: GoogleFonts.urbanist(
-                                textStyle: const TextStyle(
-                                  color: Color(0xff484848),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: size.height * 0.03),
-                        Align(
-                          alignment: Alignment.bottomRight,
-                          child: Text(
-                            displayValletAmount,
-                            style: GoogleFonts.urbanist(
-                              textStyle: const TextStyle(
-                                color: Color(0xff07C66A),
-                                fontSize: 32,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: size.height * 0.035),
-                        Text(
-                          cardFooterText, // 🔑 DYNAMIC: Profile ID + Name
-                          style: GoogleFonts.urbanist(
-                            textStyle: const TextStyle(
-                              color: Color(0xffFFFFFF),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
+                Text(
+                  'Your Wallet',
+                  style: GoogleFonts.urbanist(
+                    textStyle: const TextStyle(
+                      color: Color(0xffFFFFFF),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-
-                // --- Payment Details Card (Remains Static) ---
-                SizedBox(height: size.height * 0.03),
-                Container(
-                  width: double.infinity,
-                  height: 149,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(11),
-                    color: const Color(0xff101010),
-                  ),
-
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: size.width * 0.05,
-                      vertical: size.height * 0.015,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Payment Details', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xffFFFFFF), fontSize: 13, fontWeight: FontWeight.w600))),
-                        SizedBox(height: size.height * 0.02),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Credited From', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xff6E6E6E), fontSize: 9, fontWeight: FontWeight.w600))),
-                                Text('Foxl Chit Funds', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xff989898), fontSize: 11, fontWeight: FontWeight.w600))),
-                                SizedBox(height: size.height * 0.02),
-                                Text('Winning Amount from', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xff6E6E6E), fontSize: 9, fontWeight: FontWeight.w600))),
-                                Text('#FO8756 - 2L Chits', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xff989898), fontSize: 11, fontWeight: FontWeight.w600))),
-                              ],
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text('Credited Date', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xff6E6E6E), fontSize: 9, fontWeight: FontWeight.w600))),
-                                Text('11-11-2025', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xff989898), fontSize: 11, fontWeight: FontWeight.w600))),
-                                SizedBox(height: size.height * 0.02),
-                                Text('Transaction Id', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xff6E6E6E), fontSize: 9, fontWeight: FontWeight.w600))),
-                                Text('TXN2025110100123', style: GoogleFonts.urbanist(textStyle: const TextStyle(color: Color(0xff989898), fontSize: 11, fontWeight: FontWeight.w600))),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // --- Withdraw Button ---
-                SizedBox(height: size.height * 0.35),
-                GestureDetector(
-                  onTap: isLoading ? null : () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => RE_add_account(
-                          withdrawalAmount: valletAmount, // Pass the amount here
-                        ),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(11),
-                      color: isLoading ? const Color(0x994770CB) : const Color(0xff4770CB),
-                    ),
-                    child: Center(
-                      child: Text(
-                        'Withdraw Amount',
-                        style: GoogleFonts.urbanist(
-                          textStyle: const TextStyle(
-                            color: Color(0xffFFFFFF),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
+                Text(
+                  'Credit',
+                  style: GoogleFonts.urbanist(
+                    textStyle: const TextStyle(
+                      color: Color(0xff484848),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ],
             ),
-          ),
+            SizedBox(height: size.height * 0.03),
+            Align(
+              alignment: Alignment.bottomRight,
+              child: Text(
+                displayValletAmount,
+                style: GoogleFonts.urbanist(
+                  textStyle: const TextStyle(
+                    color: Color(0xff07C66A),
+                    fontSize: 32,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: size.height * 0.035),
+            Text(
+              cardFooterText,
+              style: GoogleFonts.urbanist(
+                textStyle: const TextStyle(
+                  color: Color(0xffFFFFFF),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

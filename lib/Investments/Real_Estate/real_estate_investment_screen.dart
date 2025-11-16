@@ -7,6 +7,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // 🔑 1. 
 import 'package:user_app/Investments/Real_Estate/real_estate_Details.dart';
 import 'package:user_app/Investments/Real_Estate/withdraw_for_realestate_screen.dart';
 
+import '../../Services/secure_storage.dart';
+
 class real_estate_investment extends StatefulWidget {
   const real_estate_investment({super.key});
 
@@ -50,12 +52,17 @@ class real_estate_investmentState extends State<real_estate_investment> {
     setState(() => isLoading = false);
   }
 
+
   // Function to fetch the list of active investments (Unchanged logic)
   Future<void> fetchRealEstateData() async {
+    final Token = await SecureStorageService.getToken();
     const String apiUrl = "https://foxlchits.com/api/REInvestment";
 
     try {
-      final response = await http.get(Uri.parse(apiUrl));
+      final response = await http.get(Uri.parse(apiUrl),headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
 
       print("🔹 API Status Code: ${response.statusCode}");
       print("🔹 API Response: ${response.body}");
@@ -101,12 +108,15 @@ class real_estate_investmentState extends State<real_estate_investment> {
       print("❌ Error: Profile ID not found in secure storage.");
       return;
     }
-
+    final Token = await SecureStorageService.getToken();
     // 🔑 USE THE DYNAMICALLY RETRIEVED PROFILE ID
     final String apiUrl = "https://foxlchits.com/api/JoinToREInvestment/by-profile/$_currentProfileId";
 
     try {
-      final response = await http.get(Uri.parse(apiUrl));
+      final response = await http.get(Uri.parse(apiUrl), headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
 
       print("⭐ Summary API Status Code: ${response.statusCode}");
       print("⭐ Summary API Response: ${response.body}");

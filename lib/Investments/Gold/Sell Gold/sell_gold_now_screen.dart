@@ -64,6 +64,7 @@ class _sell_gold_nowState extends State<sell_gold_now> {
     );
   }
   Future<void> sellGold() async {
+    final Token = await SecureStorageService.getToken();
     final String apiUrl = "https://foxlchits.com/api/AddYourGold/sell";
 
     final userId = await SecureStorageService.getProfileId();
@@ -89,7 +90,10 @@ class _sell_gold_nowState extends State<sell_gold_now> {
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $Token",
+        },
         body: jsonEncode(sellGoldData.toJson()),
       );
 
@@ -123,9 +127,14 @@ class _sell_gold_nowState extends State<sell_gold_now> {
     }
   }
   Future<void> _fetchServiceCharge() async {
+    final Token = await SecureStorageService.getToken();
     try {
       final response = await http.get(
         Uri.parse("https://foxlchits.com/api/Termsconditions/Forbidden"),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $Token",
+        },
       );
 
       if (response.statusCode == 200) {

@@ -12,13 +12,17 @@ class GoldHoldingsService {
   static Future<GoldHoldings?> fetchAndCacheGoldHoldings() async {
     try {
       final profileId = await SecureStorageService.getProfileId();
+      final Token = await SecureStorageService.getToken();
       if (profileId == null || profileId.isEmpty) {
         print("⚠️ No profileId found in secure storage");
         return null;
       }
 
       final url = Uri.parse("https://foxlchits.com/api/AddYourGold/$profileId");
-      final response = await http.get(url);
+      final response = await http.get(url, headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

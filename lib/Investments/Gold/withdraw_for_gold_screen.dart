@@ -7,6 +7,7 @@ import 'package:user_app/Investments/Gold/gold_investment_screen.dart';
 
 import '../../Models/Investments/Gold/gold_transaction_model.dart';
 import '../../Services/secure_storage.dart';
+import 'add_account_for_gold.dart';
 
 class withdraw_for_gold extends StatefulWidget {
 
@@ -45,11 +46,14 @@ class _withdraw_for_goldState extends State<withdraw_for_gold> {
 
   Future<void> _fetchGoldWallet() async {
     if (profileId == null) return;
-
+    final Token = await SecureStorageService.getToken();
     final url = "https://foxlchits.com/api/AddYourGold/wallet/$profileId";
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(Uri.parse(url),headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -67,7 +71,7 @@ class _withdraw_for_goldState extends State<withdraw_for_gold> {
 
   Future<void> loadAllTransactions() async {
     print("------------ 🔥 LOADING GOLD TRANSACTIONS 🔥 ------------");
-
+    final Token = await SecureStorageService.getToken();
     if (profileId == null) {
       print("❌ ERROR: profileId is NULL. Cannot load transactions.");
       return;
@@ -81,7 +85,10 @@ class _withdraw_for_goldState extends State<withdraw_for_gold> {
 
     try {
       print("🔵 BUY API CALL: $buyUrl");
-      final buyResponse = await http.get(Uri.parse(buyUrl));
+      final buyResponse = await http.get(Uri.parse(buyUrl),headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
       print("🟢 BUY STATUS CODE: ${buyResponse.statusCode}");
 
       if (buyResponse.body.isEmpty) {
@@ -91,7 +98,10 @@ class _withdraw_for_goldState extends State<withdraw_for_gold> {
       }
 
       print("\n🟠 SELL API CALL: $sellUrl");
-      final sellResponse = await http.get(Uri.parse(sellUrl));
+      final sellResponse = await http.get(Uri.parse(sellUrl),headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
       print("🟣 SELL STATUS CODE: ${sellResponse.statusCode}");
 
       if (sellResponse.body.isEmpty) {
@@ -267,8 +277,8 @@ class _withdraw_for_goldState extends State<withdraw_for_gold> {
                       Align(
                         alignment: Alignment.bottomRight,
                         child: Text(
-                            '₹${walletBalance?.toStringAsFixed(2) ?? "0.00"}',
-                            style: GoogleFonts.urbanist(
+                          '₹${walletBalance?.toStringAsFixed(2) ?? "0.00"}',
+                          style: GoogleFonts.urbanist(
                             textStyle: const TextStyle(
                               color: Color(0xff07C66A),
                               fontSize: 32,
@@ -331,8 +341,8 @@ class _withdraw_for_goldState extends State<withdraw_for_gold> {
                                   // 🔥 Buy or Sell Label
                                   Text(
                                     t.type == "buy"
-                                        ? 'Bought Gold'
-                                        : 'Sold Gold',
+                                        ? 'Gold Purchase'
+                                        : 'Gold sell',
                                     style: GoogleFonts.urbanist(
                                       textStyle: const TextStyle(
                                         color: Color(0xffFFFFFF),
@@ -524,10 +534,10 @@ class _withdraw_for_goldState extends State<withdraw_for_gold> {
               SizedBox(height: size.height*0.01),
               GestureDetector(
                 onTap: () {
-                  // Navigator.push(
-                  //   context,
-                  //   MaterialPageRoute(builder: (context) => add_account()),
-                  // );
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => Gold_add_account(withdrawalAmount: walletBalance!,)),
+                  );
                 },
                 child: Container(
                   width: double.infinity,

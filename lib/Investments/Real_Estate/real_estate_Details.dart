@@ -251,10 +251,13 @@ class _InvestmentPlanDetailScreenState extends State<InvestmentPlanDetailScreen>
         "paymentId": paymentId,
         "orderId": orderId,
       };
-
+      final Token = await SecureStorageService.getToken();
       final response = await http.post(
         Uri.parse(_confirmPaymentApiUrl),
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $Token",
+        },
         body: jsonEncode(requestBody),
       );
 
@@ -365,10 +368,13 @@ class _InvestmentPlanDetailScreenState extends State<InvestmentPlanDetailScreen>
         "profileId": profileId,
         "investmentId": investmentId,
       };
-
+      final Token = await SecureStorageService.getToken();
       final checkResponse = await http.post(
         Uri.parse(_checkJoinApiUrl), // 🔑 Using the new dedicated check API
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $Token",
+        },
         body: jsonEncode(checkBody),
       );
 
@@ -401,7 +407,10 @@ class _InvestmentPlanDetailScreenState extends State<InvestmentPlanDetailScreen>
 
       final orderResponse = await http.post(
         Uri.parse(_orderApiUrl),
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $Token",
+        },
         body: jsonEncode(orderBody),
       );
 
@@ -727,7 +736,7 @@ class _InvestmentPlanDetailScreenState extends State<InvestmentPlanDetailScreen>
               ),
             )
                 : Text(
-              'Subscribe',
+              'Investment',
               style: GoogleFonts.urbanist(
                 color: Colors.white,
                 fontSize: 18,

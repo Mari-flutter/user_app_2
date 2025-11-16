@@ -6,6 +6,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 
+import '../Services/secure_storage.dart';
+
 class my_investment_realestate extends StatefulWidget {
   final int totalMonths;
   final int completedMonths;
@@ -22,6 +24,7 @@ class my_investment_realestate extends StatefulWidget {
 }
 
 class _my_investment_realestateState extends State<my_investment_realestate> {
+
   // 🔑 API Constants and Storage
   final storage = const FlutterSecureStorage();
   static const String _apiUrlBase =
@@ -66,10 +69,13 @@ class _my_investment_realestateState extends State<my_investment_realestate> {
 
       print("🎯 EXIT API CALL: Ending Plan $investmentId");
       print("   Body: ${jsonEncode(requestBody)}");
-
+      final Token = await SecureStorageService.getToken();
       final response = await http.post(
         Uri.parse(_exitApiUrl),
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $Token",
+        },
         body: jsonEncode(requestBody),
       );
 
@@ -195,8 +201,11 @@ class _my_investment_realestateState extends State<my_investment_realestate> {
       }
 
       final String apiUrl = '$_apiUrlBase/$profileId';
-
-      final response = await http.get(Uri.parse(apiUrl));
+      final Token = await SecureStorageService.getToken();
+      final response = await http.get(Uri.parse(apiUrl),headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);

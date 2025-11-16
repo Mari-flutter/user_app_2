@@ -2,11 +2,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../Models/User_chit_breakdown/pending_payment_model.dart';
 import '../Services/secure_storage.dart';
+import 'package:flutter/material.dart';
+
 
 class PendingPaymentService {
-  static Future<List<PendingPayment>> fetchPendingPayments() async {
+  static Future<List<PendingPayment>> fetchPendingPayments(BuildContext context) async {
     try {
       final profileId = await SecureStorageService.getProfileId();
+      final Token = await SecureStorageService.getToken();
 
       if (profileId == null || profileId.isEmpty) {
         throw Exception("Profile ID not found in secure storage");
@@ -16,43 +19,45 @@ class PendingPaymentService {
         'https://foxlchits.com/api/ChitPayment/pending-payments/profile/$profileId',
       );
 
-      final response = await http.get(url);
+      final response = await http.get(url, headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      });
+
+      // ⭐ AUTO LOGOUT ON 401
+      if (response.statusCode == 401) {
+        await SecureStorageService.handleUnauthorized(context);
+        return []; // empty list to avoid crashing Home screen
+      }
+
       if (response.statusCode != 200) {
         throw Exception('Failed to fetch pending payments: ${response.statusCode}');
       }
 
       final List<dynamic> data = jsonDecode(response.body);
+
       final List<PendingPayment> allPayments =
       data.map((e) => PendingPayment.fromJson(e)).toList();
 
-      // ✅ Group payments by chitId
+      // --- your grouping + filtering logic remains EXACT SAME ---
       final Map<String, List<PendingPayment>> grouped = {};
-      print("🔹 Total payments fetched: ${allPayments.length}");
       for (var p in allPayments) {
-        print("→ Chit: ${p.chitName} | ID: ${p.chitId} | Month: ${p.month} | Pending: ${p.pendingAmount}");
         if (p.chitId != null && p.chitId!.isNotEmpty) {
           grouped.putIfAbsent(p.chitId!, () => []).add(p);
         }
       }
 
-      // ✅ Filter to only show the first *still pending* month for each chit
       final List<PendingPayment> filtered = [];
-      print("🔸 Grouped Chits:");
       for (var entry in grouped.entries) {
-        print("ChitId: ${entry.key} | Count: ${entry.value.length}");
         final chitPayments = entry.value;
-        chitPayments.sort((a, b) => a.month.compareTo(b.month)); // sort ascending
+        chitPayments.sort((a, b) => a.month.compareTo(b.month));
 
-        // find first payment that still has pending amount
         final unpaid = chitPayments.firstWhere(
               (p) => p.pendingAmount > 0,
           orElse: () => chitPayments.last,
         );
 
-        // show only those which have pending balance
-        if (unpaid.pendingAmount > 0) {
-          filtered.add(unpaid);
-        }
+        if (unpaid.pendingAmount > 0) filtered.add(unpaid);
       }
 
       return filtered;
@@ -61,9 +66,11 @@ class PendingPaymentService {
       rethrow;
     }
   }
-  static Future<List<PendingPayment>> fetchAllChitPayments() async {
+
+  static Future<List<PendingPayment>> fetchAllChitPayments(BuildContext context) async {
     try {
       final profileId = await SecureStorageService.getProfileId();
+      final Token = await SecureStorageService.getToken();
 
       if (profileId == null || profileId.isEmpty) {
         throw Exception("Profile ID not found in secure storage");
@@ -73,7 +80,14 @@ class PendingPaymentService {
         'https://foxlchits.com/api/ChitPayment/pending-payments/profile/$profileId',
       );
 
-      final response = await http.get(url);
+      final response = await http.get(url, headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $Token",
+      },);
+      if (response.statusCode == 401) {
+        await SecureStorageService.handleUnauthorized(context);
+        return []; // empty list to avoid crashing Home screen
+      }
       if (response.statusCode != 200) {
         throw Exception('Failed to fetch chit payments: ${response.statusCode}');
       }

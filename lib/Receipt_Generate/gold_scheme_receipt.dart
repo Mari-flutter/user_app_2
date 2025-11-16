@@ -214,7 +214,7 @@ Future<void> GoldschemeReceiptPDF(
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
-                      _detailRowEnd("Maturity Date", data['maturityDate'], boldFont),
+                      _detailRowEnd("Next Due Date", data['NextDueDate'], boldFont),
                       pw.SizedBox(height: 15),
                       _detailRowEnd("Date", data['transactionDate'], boldFont),
                     ],
@@ -295,7 +295,7 @@ Future<void> GoldschemeReceiptPDF(
                             ),
                             pw.SizedBox(height: 15,),
                             pw.Text(
-                              "Installment",
+                              "Today Gold Rate",
                               style: pw.TextStyle(
                                 font: regularFont,
                                 fontSize: 10,
@@ -304,7 +304,7 @@ Future<void> GoldschemeReceiptPDF(
                             ),
                             pw.SizedBox(height: 5,),
                             pw.Text(
-                              data['intsallment'],
+                              data['GoldRate'],
                               style: pw.TextStyle(
                                 font: regularFont,
                                 fontSize: 12,
@@ -372,7 +372,7 @@ Future<void> GoldschemeReceiptPDF(
   } else {
     directory = await getApplicationDocumentsDirectory();
   }
-  final file = File('${directory.path}/Gold_Scheme_Receipt_${data['bookingId']}.pdf');
+  final file = File('${directory.path}/Gold_Scheme_Receipt.pdf');
   await file.writeAsBytes(bytes);
 
   ScaffoldMessenger.of(context).showSnackBar(

@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+
+import '../Login/login_screen.dart';
 
 class SecureStorageService {
   static final _storage = FlutterSecureStorage();
@@ -13,7 +16,15 @@ class SecureStorageService {
   static const _keyUpcomingAuctionCount = 'upcomingAuctionCount';
   static const _keyUserMail = 'email';
   static const _keyMobilenumber = 'userMobileNumber';
+  static Future<void> handleUnauthorized(BuildContext context) async {
+    await clearSession();
 
+    Navigator.pushAndRemoveUntil(
+      context,
+      CupertinoPageRoute(builder: (_) => const login()),
+          (route) => false,
+    );
+  }
 
   // ✅ Save upcoming chit count
   static Future<void> saveUpcomingAuctionCount(int count) async {
@@ -47,7 +58,15 @@ class SecureStorageService {
     final url = Uri.parse("https://foxlchits.com/api/Profile/profile/$profileId");
 
     try {
-      final response = await http.get(url);
+      final token = await _storage.read(key: _keyToken);
+
+      final response = await http.get(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 

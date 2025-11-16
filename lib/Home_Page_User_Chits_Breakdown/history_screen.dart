@@ -51,7 +51,7 @@ class _HistoryState extends State<History> {
 
   Future<void> _loadPendingPayments() async {
     try {
-      final payments = await PendingPaymentService.fetchPendingPayments();
+      final payments = await PendingPaymentService.fetchPendingPayments(context);
 
       // ✅ Only include real pending ones
       final filtered = payments.where((p) => p.pendingAmount > 0).toList();
